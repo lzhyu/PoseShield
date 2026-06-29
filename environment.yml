@@ -5,25 +5,25 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - python=3.10
+  - python=3.10.20
   - pytorch=2.5.1
   - pytorch-cuda=12.4
   - numpy=2.2.6
-  - scipy
+  - scipy=1.15.2
   - pip
   - pip:
-    - smplx
-    - trimesh
+    - smplx==0.1.28
+    - trimesh==4.12.2
     - python-fcl==0.7.0.11
-    - yacs
-    - matplotlib
-    - Pillow
-    - tqdm
-    - torchdiffeq
+    - yacs==0.1.8
+    - matplotlib==3.10.9
+    - Pillow==12.2.0
+    - tqdm==4.68.3
+    - torchdiffeq==0.2.5
     - transformers==5.12.1
-    - accelerate
+    - accelerate==1.14.0
     - diffusers==0.38.0
-    - safetensors
-    - einops
-    - rotary_embedding_torch
-    - pyyaml
+    - safetensors==0.8.0
+    - einops==0.8.2
+    - rotary-embedding-torch==0.9.1
+    - pyyaml==6.0.3
