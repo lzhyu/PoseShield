@@ -68,11 +68,12 @@ At inference time, PoseShield uses this learned field in two ways:
 ## Limitations
 
 The released PoseShield models and datasets assume the neutral SMPL-H body model
-with fixed zero shape parameters (`betas = 0`). Body-shape variation is not
-optimized or modeled in this release. To apply the method to other SMPL body
-shapes, character-specific SMPL humans, Momentum Human Rig, or other human
-parametric models, users may need to build a custom collision dataset for the
-target body model and retrain the collision field.
+with `betas=None`; subject-specific body-shape parameters are not passed to the
+SMPL-H layer. Body-shape variation is not optimized or modeled in this release.
+To apply the method to other SMPL body shapes, character-specific SMPL humans,
+Momentum Human Rig, or other human parametric models, users may need to build a
+custom collision dataset for the target body model and retrain the collision
+field.
 
 ## Getting Started
 
