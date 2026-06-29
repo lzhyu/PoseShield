@@ -86,7 +86,9 @@ mkdir -p deps/body_models/smplh
 cp smplh/neutral/model.npz deps/body_models/smplh/SMPLH_NEUTRAL.npz
 ```
 
-PoseShield currently uses the neutral SMPL-H model.
+PoseShield currently uses the neutral SMPL-H model with fixed zero shape
+parameters (`betas = 0`); body-shape variation is not optimized or modeled in
+this release.
 
 ### 3. Download Release Assets
 
