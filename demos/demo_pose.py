@@ -37,7 +37,7 @@ def get_args():
         help="Constraint threshold (lower means harder constraint, e.g. 0.1)"
     )
     parser.add_argument(
-        "--max-itr", type=int, default=200,
+        "--max-itr", type=int, default=300,
         help="Maximum number of optimization iterations"
     )
     parser.add_argument(

@@ -47,7 +47,7 @@ def main():
         help="Number of samples to search for a valid datum",
     )
     parser.add_argument(
-        "--max-itr", type=int, default=200,
+        "--max-itr", type=int, default=300,
         help="Maximum number of optimization iterations",
     )
     parser.add_argument(

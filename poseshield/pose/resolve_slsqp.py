@@ -10,7 +10,7 @@ def optimize_slsqp(
     sample: np.ndarray,
     model: ResidualMLP,
     device: torch.device,
-    max_itr: int = 200,
+    max_itr: int = 300,
     threshold = 0.1,
     cost_type: str = "normal",
     tol: float = 0.03,
