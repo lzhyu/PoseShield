@@ -98,6 +98,7 @@ def main() -> None:
     results = {
         "motion": str(motion_path),
         "num_frames": int(motion.shape[0]),
+        "exact_collision_free": len(collision_frames) == 0,
         "num_collision_frames": len(collision_frames),
         "collision_frame_ratio": len(collision_frames) / motion.shape[0],
         "collision_frame_indices": collision_frames,
@@ -123,6 +124,7 @@ def main() -> None:
     plt.close(figure)
 
     print(f"EXACT_FCL collision_frames={len(collision_frames)}/{motion.shape[0]}")
+    print(f"EXACT_FCL exact_collision_free={len(collision_frames) == 0}")
     print(f"EXACT_FCL mean_penetration_depth={penetration_array.mean():.9f}")
     print(f"EXACT_FCL max_penetration_depth={penetration_array.max():.9f}")
     print(f"EXACT_FCL total_penetration_depth={penetration_array.sum():.9f}")

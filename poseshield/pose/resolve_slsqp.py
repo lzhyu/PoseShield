@@ -18,7 +18,8 @@ def optimize_slsqp(
     """
     Optimize using SciPy SLSQP to minimize cost_function(x, x_ref)
     subject to:
-      - threshold - constraint_function(model, x) >= 0   (i.e., constraint <= threshold)
+      - constraint_function(model, x) - threshold >= 0
+        (i.e., the learned collision-field score must meet the threshold)
       - 6D rotation regularization as equalities:
           ||r1|| = 1, ||r2|| = 1, dot(r1, r2) = 0
     """
@@ -50,7 +51,7 @@ def optimize_slsqp(
         grad = torch.autograd.grad(val, x_t, retain_graph=False)[0]
         return grad.detach().cpu().numpy().astype(np.float64)
 
-    # inequality constraint: threshold - constraint_function(model, x) >= 0
+    # inequality constraint: constraint_function(model, x) - threshold >= 0
     def cons_ineq_fun(x_np):
         x_t = to_torch(x_np, requires_grad=False)
         val = constraint_function(model, x_t) - threshold
@@ -60,7 +61,6 @@ def optimize_slsqp(
         x_t = to_torch(x_np, requires_grad=True)
         cons_val = constraint_function(model, x_t)
         grad = torch.autograd.grad(cons_val, x_t, retain_graph=False)[0]
-        # gradient of threshold - cons(x) is -grad(cons)
         return (grad).detach().cpu().numpy().astype(np.float64)
 
     # helpers to view x as [N x 6]
@@ -180,10 +180,11 @@ def optimize_slsqp(
     )
 
     if not res.success:
-        print(f"Optimization failed: {res.message}")
-        print(f"Status: {res.status}")
-        print(f"Number of iterations: {res.nit}")
-        print(f"Final function value: {res.fun}")
+        print(f"SLSQP solver_success=False")
+        print(f"SLSQP message: {res.message}")
+        print(f"SLSQP status: {res.status}")
+        print(f"SLSQP iterations: {res.nit}")
+        print(f"SLSQP final objective: {res.fun}")
 
     x_opt = res.x.astype(np.float32)
     print(f"Final parameter delta: {np.linalg.norm(x_opt - x0):.6f}")

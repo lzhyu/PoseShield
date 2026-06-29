@@ -448,9 +448,11 @@ def main() -> None:
         with open(dist_path, "rb") as f:
             distances = pickle.load(f)
 
+        collision_flags = []
         penetration_depths = []
         for i in tqdm(range(seq_len), desc="Detecting collision"):
-            _, penetration_depth = self_collision_status(vertices[i], faces, distances)
+            has_collision, penetration_depth = self_collision_status(vertices[i], faces, distances)
+            collision_flags.append(bool(has_collision))
             penetration_depths.append(float(penetration_depth))
 
         plt.figure(figsize=(10, 5))
@@ -463,10 +465,17 @@ def main() -> None:
         plt.close()
 
         mean_penetration = float(np.mean(penetration_depths))
+        collision_frames = np.flatnonzero(np.asarray(collision_flags, dtype=bool)).tolist()
+        exact_collision_free = len(collision_frames) == 0
         penetration_results = {
+            "exact_collision_free": exact_collision_free,
+            "num_collision_frames": len(collision_frames),
+            "collision_frame_indices": collision_frames,
             "mean_penetration_depth": mean_penetration,
             "penetration_depth_seq": penetration_depths,
         }
+        summary["exact_collision_free"] = exact_collision_free
+        summary["num_collision_frames"] = len(collision_frames)
         summary["mean_penetration_depth"] = mean_penetration
         with open(
             os.path.join(args.output_dir, "penetration_results.json"),
@@ -476,6 +485,8 @@ def main() -> None:
             json.dump(penetration_results, f, indent=2)
         with open(os.path.join(args.output_dir, "summary.json"), "w", encoding="utf-8") as f:
             json.dump(summary, f, indent=2)
+        print(f"Exact collision free: {exact_collision_free}")
+        print(f"Collision frames: {len(collision_frames)}/{seq_len}")
         print(f"Mean penetration depth: {mean_penetration:.9f}")
 
     print("Done.")

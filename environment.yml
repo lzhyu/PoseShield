@@ -6,23 +6,23 @@ channels:
   - defaults
 dependencies:
   - python=3.10
-  - pytorch
+  - pytorch=2.5.1
   - pytorch-cuda=12.4
-  - numpy
+  - numpy=2.2.6
   - scipy
   - pip
   - pip:
     - smplx
     - trimesh
-    - python-fcl
+    - python-fcl==0.7.0.11
     - yacs
     - matplotlib
     - Pillow
     - tqdm
     - torchdiffeq
-    - transformers
+    - transformers==5.12.1
     - accelerate
-    - diffusers
+    - diffusers==0.38.0
     - safetensors
     - einops
     - rotary_embedding_torch

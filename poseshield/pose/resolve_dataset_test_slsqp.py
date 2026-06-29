@@ -47,7 +47,7 @@ def main():
         help="Number of samples to search for a valid datum",
     )
     parser.add_argument(
-        "--max-itr", type=int, default=800,
+        "--max-itr", type=int, default=200,
         help="Maximum number of optimization iterations",
     )
     parser.add_argument(
@@ -100,6 +100,8 @@ def main():
     ).to(device)
     
     no_collision_samples = 0
+    solver_success_samples = 0
+    constraint_satisfied_samples = 0
     final_errors = []
     penetration_depth_reductions = []
     time_list = []
@@ -114,6 +116,7 @@ def main():
         optimized_x, loss_hist, cons_hist, success, message = optimize_slsqp(
             sample, model, device, max_itr=args.max_itr, threshold=args.threshold, cost_type=args.cost_type, tol=args.tol
         )
+        solver_success_samples += int(success)
         end_time = time.time()
         opt_time = end_time - start_time
         time_list.append(opt_time)
@@ -129,15 +132,14 @@ def main():
                 torch.from_numpy(optimized_x).to(device),
                 torch.from_numpy(sample).float().to(device)
             ).item()
-        if not success:
-            print(f"Optimization failed for sample {i+1}: {message}")
-            try:
-                final_constraint_val = constraint_function(
-                    model, torch.from_numpy(optimized_x).float().to(device)
-                ).item()
-            except Exception:
-                final_constraint_val = float('nan')
-            print(f"Final cost: {final_error:.6f}, constraint value: {final_constraint_val:.6f}")
+        try:
+            final_constraint_val = constraint_function(
+                model, torch.from_numpy(optimized_x).float().to(device)
+            ).item()
+        except Exception:
+            final_constraint_val = float('nan')
+        constraint_satisfied = bool(final_constraint_val >= args.threshold)
+        constraint_satisfied_samples += int(constraint_satisfied)
             
         if args.save:
             os.makedirs("opt_samples", exist_ok=True)
@@ -157,9 +159,20 @@ def main():
         # check for collision
         _, total_penetration_depth_b = pose_collision_status((sample), smpl_model, distances, device)
         has_problematic_collision_a, total_penetration_depth_a = pose_collision_status((optimized_x), smpl_model, distances, device)
+        exact_collision_free = not has_problematic_collision_a
         
-        if not has_problematic_collision_a:
+        if exact_collision_free:
             no_collision_samples+=1
+        print(
+            f"Sample {i+1}/{num_eval} status: "
+            f"solver_success={success}, "
+            f"constraint_satisfied={constraint_satisfied}, "
+            f"exact_collision_free={exact_collision_free}, "
+            f"final_cost={final_error:.6f}, "
+            f"constraint_value={final_constraint_val:.6f}, "
+            f"penetration_depth={total_penetration_depth_a:.6f}, "
+            f"solver_message={message}"
+        )
             
         final_errors.append(final_error)
         penetration_depth_reductions.append(max(0, 1 - total_penetration_depth_a/(total_penetration_depth_b+1e-6))) 
@@ -171,7 +184,9 @@ def main():
         mvd_list.append(mvd)
 
     if num_eval > 0:
-        print(f'success rate {no_collision_samples/num_eval}')
+        print(f'solver success rate {solver_success_samples/num_eval}')
+        print(f'constraint satisfied rate {constraint_satisfied_samples/num_eval}')
+        print(f'exact collision-free rate {no_collision_samples/num_eval}')
         print(f'final error {np.mean(final_errors)}')
         print(f'penetration depth reduction {np.mean(penetration_depth_reductions)}')
         print(f'average optimization time {np.mean(time_list):.4f} seconds')

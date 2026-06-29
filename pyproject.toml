@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "poseshield"
 version = "0.1.0"
 description = "Learned collision field for self-penetration resolution in SMPL-H poses and motions"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 
 [tool.setuptools.packages.find]
 where = ["."]

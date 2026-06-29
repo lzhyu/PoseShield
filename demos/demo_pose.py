@@ -155,10 +155,13 @@ def main():
             torch.from_numpy(optimized_x).to(device),
             torch.from_numpy(sample_flat).float().to(device)
         ).item()
+        constraint_satisfied = final_val >= args.threshold
 
-        print(f"\nOptimization Finished in {end_time - start_time:.2f}s (Success: {success})")
-        print(f"  - Message: {message}")
-        print(f"  - Final constraint value: {final_val:.6f} (Threshold: {args.threshold})")
+        print(f"\nOptimization finished in {end_time - start_time:.2f}s")
+        print(f"  - solver_success: {success}")
+        print(f"  - solver_message: {message}")
+        print(f"  - constraint_satisfied: {constraint_satisfied}")
+        print(f"  - final_constraint_value: {final_val:.6f} (threshold: {args.threshold})")
         print(f"  - Mean Vertex Deviation (MVD error): {final_error:.6f}")
 
         # 6. Save results & Visualizations
@@ -178,7 +181,7 @@ def main():
         # - 'pose': Flattened body joints rotation in axis-angles. Shape: [63] (21 joints * 3).
         #   Representing the 21 body joints of the SMPL-H model.
         # 
-        # - 'betas': SMPL-H shape parameters. Shape: [10] (default: zeros).
+        # - 'betas': Optional SMPL-H shape parameters if present in the source sample.
         # 
         # - 'global_pose': Global root orientation. Shape: [3] (default: zeros).
         # ==============================================================================
@@ -204,13 +207,14 @@ def main():
             # If SMPL-H and distance file are loaded, check actual collision status
             if body_model_available and distances is not None:
                 from poseshield.pose.preprocess import pose_collision_status
-                _, pen_depth_b = pose_collision_status(rotation_6d, smpl_model, distances, device)
-                _, pen_depth_a = pose_collision_status(optimized_x, smpl_model, distances, device)
-
+                has_collision_b, pen_depth_b = pose_collision_status(rotation_6d, smpl_model, distances, device)
+                has_collision_a, pen_depth_a = pose_collision_status(optimized_x, smpl_model, distances, device)
 
                 print(f"Collision metrics:")
-                print(f"  - Initial: Penetration Depth = {pen_depth_b:.6f}")
-                print(f"  - Optimized: Penetration Depth = {pen_depth_a:.6f}")
+                print(f"  - initial_exact_collision_free: {not has_collision_b}")
+                print(f"  - initial_penetration_depth: {pen_depth_b:.6f}")
+                print(f"  - exact_collision_free: {not has_collision_a}")
+                print(f"  - optimized_penetration_depth: {pen_depth_a:.6f}")
                 
         except Exception as e:
             print(f"Failed to generate visualization or run metrics verification: {e}")

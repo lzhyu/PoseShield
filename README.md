@@ -85,7 +85,10 @@ conda activate poseshield
 pip install -e .
 ```
 
-We test the code on Python 3.10 and PyTorch with CUDA.
+We test the code on Python 3.10 and PyTorch with CUDA. The release
+`environment.yml` pins the dependency versions that are most likely to affect
+reproducibility, including PyTorch, NumPy, python-fcl, transformers, and
+diffusers.
 
 ### 2. Download SMPL+H Body Models
 
@@ -140,6 +143,41 @@ ckpts/tencent/HY-Motion-1.0-Lite/latest.ckpt
 ckpts/tencent/HY-Motion-1.0-Lite/config.yaml  # or config.yml
 ckpts/tencent/HY-Motion-1.0-Lite/stats/Mean.npy
 ckpts/tencent/HY-Motion-1.0-Lite/stats/Std.npy
+```
+
+After downloading the release assets, the main required files should look like:
+
+```text
+deps/
++-- body_models/
+|   +-- smplh/
+|       +-- SMPLH_NEUTRAL.npz
++-- distances.pkl
+ckpts/
++-- poseshield/
+|   +-- config.yaml
+|   +-- config_elu.yaml
+|   +-- model.pth
+|   +-- model_elu.pth
++-- tencent/
+    +-- HY-Motion-1.0-Lite/
+        +-- latest.ckpt
+        +-- config.yaml  # or config.yml
+        +-- stats/
+            +-- Mean.npy
+            +-- Std.npy
+```
+
+Validate the asset layout with:
+
+```bash
+python tools/check_assets.py --mode all
+```
+
+For pose-only workflows, use:
+
+```bash
+python tools/check_assets.py --mode pose
 ```
 
 The repository includes small ready-to-run motion demos in `demo_asset/`. The full released canonical motion subset is distributed separately through the project release assets.
@@ -200,6 +238,7 @@ python tools/evaluate_exact_fcl.py \
 ```
 
 If exact mesh collisions remain, the tool exits with a non-zero status after writing `exact_fcl_results.json`.
+This exact-FCL check is the core geometry-level validation for motion outputs.
 
 ### HTML Visualization
 
@@ -212,10 +251,11 @@ python tools/generate_motion_html.py \
 ```
 
 Open the generated `*_vis.html` file in a browser.
+This is the lightweight visualization path and does not require Blender.
 
 ### Optional Blender MP4 Rendering
 
-For a higher-quality MP4 render, install Blender and FFmpeg, then run:
+For a higher-quality MP4 render, install Blender and FFmpeg separately, then run:
 
 ```bash
 python tools/render_motion_blender.py \
@@ -224,6 +264,8 @@ python tools/render_motion_blender.py \
     --output demos/output_motion/${STEM}_stage2/render.mp4 \
     --blender-path /path/to/blender
 ```
+
+Blender/MP4 rendering is optional and is not required for PoseShield evaluation.
 
 ## Motion Data Format
 
@@ -283,6 +325,16 @@ python poseshield/pose/resolve_dataset_test_slsqp.py \
     --max-itr 200 \
     --save
 ```
+
+Pose-level SLSQP logs report three separate statuses:
+
+- `solver_success`: whether SciPy SLSQP terminated with its success flag.
+- `constraint_satisfied`: whether the learned collision-field constraint meets
+  the requested threshold.
+- `exact_collision_free`: whether the final SMPL-H mesh is collision-free under
+  exact-FCL validation.
+
+The default SLSQP iteration budget is `--max-itr 200`.
 
 ## Training
 
