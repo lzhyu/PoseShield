@@ -1,10 +1,10 @@
-# PoseShield (ECCV 2026): Neural Collision Fields for Human Self-Collision Resolution
+# PoseShield: Neural Collision Fields for Human Self-Collision Resolution (ECCV 2026)
 
 <p align="center">
   Zhengyuan Li<sup>1</sup>&emsp;
   Zeyun Deng<sup>1</sup>&emsp;
   Yifan Shen<sup>3</sup>&emsp;
-  <a href='https://cs.illinois.edu/about/people/faculty/lgui' target='_blank'>Liangyan Gui</a><sup>3</sup>&emsp;
+  Liangyan Gui<sup>3</sup>&emsp;
   Miaolan Xie<sup>1</sup>&emsp;
   <br>
   Joseph Campbell<sup>1</sup>&emsp;
