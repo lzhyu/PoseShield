@@ -31,6 +31,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--optimized", type=Path, required=True, help="Optimized canonical motion")
     parser.add_argument("--output", type=Path, required=True, help="Output MP4 path")
     parser.add_argument("--blender-path", type=Path, required=True, help="Path to the Blender binary")
+    parser.add_argument(
+        "--ffmpeg-path",
+        default="ffmpeg",
+        help="Path to an FFmpeg binary. The preferred encoder is libx264; the script falls back to mpeg4 if unavailable.",
+    )
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     parser.add_argument("--fps", type=int, default=30)
     parser.add_argument("--samples", type=int, default=32)
@@ -67,6 +72,57 @@ def run_forward_kinematics(motion: np.ndarray, device: torch.device) -> tuple[np
             return_verts=True,
         )
     return output.vertices.cpu().numpy(), smpl_model.faces
+
+
+def encode_frames_with_ffmpeg(
+    ffmpeg_path: str,
+    frames_dir: Path,
+    output_path: Path,
+    fps: int,
+) -> None:
+    """Encode rendered PNG frames to MP4, falling back when libx264 is unavailable."""
+    frame_pattern = str(frames_dir / "frame_%04d.png")
+    x264_command = [
+        ffmpeg_path,
+        "-y",
+        "-framerate",
+        str(fps),
+        "-i",
+        frame_pattern,
+        "-c:v",
+        "libx264",
+        "-pix_fmt",
+        "yuv420p",
+        "-crf",
+        "18",
+        str(output_path),
+    ]
+    fallback_command = [
+        ffmpeg_path,
+        "-y",
+        "-framerate",
+        str(fps),
+        "-i",
+        frame_pattern,
+        "-c:v",
+        "mpeg4",
+        "-q:v",
+        "3",
+        "-pix_fmt",
+        "yuv420p",
+        str(output_path),
+    ]
+
+    try:
+        subprocess.run(x264_command, check=True)
+        return
+    except (FileNotFoundError, subprocess.CalledProcessError) as exc:
+        print(
+            "FFmpeg libx264 encode failed; retrying with MPEG-4 fallback. "
+            f"Original error: {exc}",
+            file=sys.stderr,
+        )
+    subprocess.run(fallback_command, check=True)
 
 
 def main() -> None:
@@ -118,24 +174,7 @@ def main() -> None:
         ],
         check=True,
     )
-    subprocess.run(
-        [
-            "ffmpeg",
-            "-y",
-            "-framerate",
-            str(args.fps),
-            "-i",
-            str(frames_dir / "frame_%04d.png"),
-            "-c:v",
-            "libx264",
-            "-pix_fmt",
-            "yuv420p",
-            "-crf",
-            "18",
-            str(output_path),
-        ],
-        check=True,
-    )
+    encode_frames_with_ffmpeg(args.ffmpeg_path, frames_dir, output_path, args.fps)
     shutil.rmtree(work_dir)
     print(f"Video saved to {output_path}")
 

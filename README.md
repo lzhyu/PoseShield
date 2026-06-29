@@ -255,14 +255,18 @@ This is the lightweight visualization path and does not require Blender.
 
 ### Optional Blender MP4 Rendering
 
-For a higher-quality MP4 render, install Blender and FFmpeg separately, then run:
+For a higher-quality MP4 render, install Blender manually and use an FFmpeg
+build with `libx264` support when possible. Some system FFmpeg modules do not
+enable `libx264`, so the script accepts `--ffmpeg-path` and falls back to MPEG-4
+encoding if the `libx264 -crf` encode fails.
 
 ```bash
 python tools/render_motion_blender.py \
     --original demo_asset/$SAMPLE \
     --optimized demos/output_motion/${STEM}_stage2/optimized_motion.npy \
     --output demos/output_motion/${STEM}_stage2/render.mp4 \
-    --blender-path /path/to/blender
+    --blender-path /path/to/blender \
+    --ffmpeg-path /path/to/ffmpeg
 ```
 
 Blender/MP4 rendering is optional and is not required for PoseShield evaluation.
