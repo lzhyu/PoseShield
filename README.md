@@ -44,6 +44,27 @@ PoseShield provides:
   <img src="assets/pipeline.png" alt="PoseShield Pipeline" width="90%">
 </p>
 
+PoseShield treats self-collision correction as a post-hoc optimization problem:
+given a self-intersecting SMPL-H pose or motion, find a nearby collision-free
+result while preserving the original pose semantics and motion dynamics.
+
+The core component is a neural collision field defined directly in SMPL-H pose
+space. The field is trained to be positive for collision-free poses and negative
+for self-intersecting poses, so it can be used as a differentiable collision
+constraint. We regularize this field with an Eikonal-style objective, encouraging
+non-vanishing gradients near the collision boundary and making gradient-based
+optimization more stable.
+
+At inference time, PoseShield uses this learned field in two ways:
+
+- For single poses, it solves a constrained optimization problem that minimally
+  changes the input SMPL-H body rotations while moving the pose into the
+  collision-free region.
+- For motion sequences, it reuses the same learned collision field inside a
+  two-stage latent optimization pipeline: Stage 1 fits the motion model latent
+  to the input sequence, and Stage 2 resolves self-collisions while preserving
+  hand motion, temporal dynamics, and the original global translation.
+
 ## Getting Started
 
 ### 1. Environment Setup
