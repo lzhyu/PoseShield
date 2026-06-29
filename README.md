@@ -36,7 +36,7 @@ PoseShield provides:
 
 ## News
 
-- **Jun 2026** — Initial code release with pre-trained models, pose-level optimization, and motion-level Stage 1/Stage 2 inference.
+- **Jun 2026** — Initial code release with training, evaluation, demo, and inference code, plus pre-trained PoseShield checkpoints.
 
 ## Overview
 
