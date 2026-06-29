@@ -1,0 +1,16 @@
+TRAIN:
+  NUM_EPOCHS: 200
+  BATCH_SIZE: 512
+  LR: 0.0001
+  VAL_INTERVAL: 10
+  EXP_NAME: "train_basic"
+  GRAD_LOSS_WEIGHT: 0.0
+  TD_LOSS_WEIGHT: 1.0
+  DT: 0.01
+
+MODEL:
+  TYPE: "ResidualMLP"
+  IN_DIM: 126             # 21 joints × 6 values each
+  HIDDEN_DIM: 512
+  NUM_LAYERS: 8           # Use 12 to match the pre-trained model
+  ACTIVATION: "relu"

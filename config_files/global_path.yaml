@@ -1,0 +1,11 @@
+MESH_DISTANCE_PATH: "deps/distances.pkl"
+TOPOLOGY_THRESHOLD: 50
+BODY_MODEL_PATH: "deps/body_models"
+DATA_PATH: "data/dataset/"
+DATASET_EVAL_PATH: "data/dataset_test/"
+MEAN_PATH: "ckpts/tencent/HY-Motion-1.0-Lite/stats/Mean.npy"
+STD_PATH: "ckpts/tencent/HY-Motion-1.0-Lite/stats/Std.npy"
+MOTION_CKPT_CONFIG: "ckpts/poseshield/config_elu.yaml"
+MOTION_CKPT_PATH: "ckpts/poseshield/model_elu.pth"
+POSE_CKPT_CONFIG: "ckpts/poseshield/config.yaml"
+POSE_CKPT_PATH: "ckpts/poseshield/model.pth"

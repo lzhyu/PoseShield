@@ -1,0 +1,142 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+#  Usually these files are written by a python script from a template
+#  before PyInstaller builds the exe, so as to inject date/other infos into it.
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Translation files
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+.pybuilder/
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+#   For a library or app, you might want to share your .python-version.
+#   It makes the environments reproducible.
+# .python-version
+
+# pipenv
+#   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
+#   However, if you're building a library, you should not check in a lockfile.
+# Pipfile.lock
+
+# poetry
+#   Similar to Pipfile.lock, poetry.lock should be in version control.
+# poetry.lock
+
+# pdm
+#   Similar to Pipfile.lock, pdm.lock should be in version control.
+# pdm.lock
+
+# virtualenv
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDEs
+.vscode/
+.idea/
+.DS_Store
+
+# Slurm / cluster files
+*.out
+*.err
+
+# Datasets and large dependencies
+data/*
+!data/dataset/
+data/dataset/*
+!data/dataset/*.csv
+!data/motion_canonical/
+data/motion_canonical/*
+!data/motion_canonical/README.md
+deps/
+ckpts/
+experiments/
+tmp/
+
+# Optimizations and evaluation outputs
+opt_samples/
+opt_samples_relu/
+opt_samples_scratch/
+output_dno_ours/
+*output*/
+*opt_samples*/
+*metrics_summary.json
+*foot_skating_results.json
+*final_metrics.json
+
+# Demo outputs
+demos/output/
+demos/output_test/
+demos/output_motion*/
+poseshield/output/

@@ -1,0 +1,29 @@
+name: poseshield
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - pytorch
+  - pytorch-cuda=12.4
+  - numpy
+  - scipy
+  - pip
+  - pip:
+    - smplx
+    - trimesh
+    - python-fcl
+    - yacs
+    - matplotlib
+    - Pillow
+    - tqdm
+    - torchdiffeq
+    - transformers
+    - accelerate
+    - diffusers
+    - safetensors
+    - einops
+    - rotary_embedding_torch
+    - pyyaml
