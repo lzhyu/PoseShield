@@ -11,18 +11,18 @@ if [ ! -d "$CKPT_PATH" ]; then
 fi
 
 echo "Available motion demo samples in demo_asset/:"
-echo "1) motionfix_004422_135.npy"
-echo "2) motionfix_005334_135.npy"
-echo "3) motionfix_005783_135.npy"
+echo "1) motion_sample1.npy"
+echo "2) motion_sample2.npy"
+echo "3) motion_sample3.npy"
 
 read -r -p "Select a sample (1-3) [default: 2]: " selection
 selection=${selection:-2}
 
 case "$selection" in
-    1) SAMPLE="motionfix_004422_135.npy";;
-    2) SAMPLE="motionfix_005334_135.npy";;
-    3) SAMPLE="motionfix_005783_135.npy";;
-    *) echo "Invalid selection. Using sample 2."; SAMPLE="motionfix_005334_135.npy";;
+    1) SAMPLE="motion_sample1.npy";;
+    2) SAMPLE="motion_sample2.npy";;
+    3) SAMPLE="motion_sample3.npy";;
+    *) echo "Invalid selection. Using sample 2."; SAMPLE="motion_sample2.npy";;
 esac
 
 MOTION_FILE="demo_asset/$SAMPLE"

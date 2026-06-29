@@ -1,4 +1,4 @@
-# PoseShield: Neural Collision Fields for Human Self-Collision Resolution
+# PoseShield (ECCV 2026): Neural Collision Fields for Human Self-Collision Resolution
 
 <p align="center">
   Zhengyuan Li<sup>1</sup>&emsp;
@@ -16,29 +16,33 @@
   <sup>1</sup>Purdue University&emsp;
   <sup>2</sup>LightSpeed Studios&emsp;
   <sup>3</sup>University of Illinois Urbana-Champaign
-  <br>
-  <strong>ECCV 2026</strong>
 </p>
 
 <p align="center">
-  <img src="assets/pipeline.png" alt="PoseShield Pipeline" width="90%">
-  <br>
-  <a href="assets/img_pipeline.pdf">Download the pipeline figure as PDF</a>
+  <img src="assets/PoseShield_demo.gif" alt="PoseShield collision resolution demo" width="90%">
 </p>
 
-<p align="center">
-  <video src="assets/PoseShield_demo.mp4" controls width="90%"></video>
-</p>
+**PoseShield** is a post-hoc self-collision resolver for SMPL-H poses and
+human motion sequences. It uses a learned neural collision field as a
+differentiable constraint, so generated poses and motions can be repaired
+without retraining the upstream generator.
 
-<p align="center">
-  <a href="assets/PoseShield_demo.mp4">Watch the PoseShield demo video</a>
-</p>
+PoseShield provides:
 
-**PoseShield** is a post-hoc self-collision resolver for SMPL-H poses and human motion sequences. It learns a neural collision field and uses it as a differentiable constraint for collision correction without retraining the upstream pose or motion generator.
+- pose-level self-collision detection and correction for SMPL-H;
+- motion-level collision resolution with a two-stage latent optimization pipeline;
+- exact mesh/FCL validation utilities;
+- browser-based motion visualization and optional Blender rendering.
 
 ## News
 
 - **Jun 2026** — Initial code release with pre-trained models, pose-level optimization, and motion-level Stage 1/Stage 2 inference.
+
+## Overview
+
+<p align="center">
+  <img src="assets/pipeline.png" alt="PoseShield Pipeline" width="90%">
+</p>
 
 ## Getting Started
 
@@ -109,29 +113,6 @@ ckpts/tencent/HY-Motion-1.0-Lite/stats/Std.npy
 
 The repository includes small ready-to-run motion demos in `demo_asset/`. The full released canonical motion subset is distributed separately through the project release assets.
 
-## Public Motion Format
-
-All public motion inference, evaluation, and visualization code consumes the same canonical motion format:
-
-```text
-shape: [frames, 135]
-
-[0:132]   22 joints × 6D rotations, HY-Motion column-interleaved layout
-[132:135] absolute global translation [abs_x, abs_y, abs_z]
-```
-
-Coordinate convention:
-
-```text
-Y-up
-X = right
-Y = height/up
-Z = forward
-frame 0 human facing +Z
-```
-
-The same format is used for both input motions and `optimized_motion.npy`.
-
 ## Demo
 
 ### Pose Collision Resolution
@@ -153,7 +134,7 @@ bash demos/demo_motion.sh
 Or run the two stages explicitly:
 
 ```bash
-SAMPLE=motionfix_005334_135.npy
+SAMPLE=motion_sample2.npy
 STEM=${SAMPLE%.npy}
 
 python -m poseshield.hymotion.dno.run_dno_stage1 \
@@ -212,6 +193,31 @@ python tools/render_motion_blender.py \
     --output demos/output_motion/${STEM}_stage2/render.mp4 \
     --blender-path /path/to/blender
 ```
+
+## Motion Data Format
+
+PoseShield motion inference, evaluation, and visualization use a canonical
+HY-Motion-compatible motion array:
+
+```text
+shape: [frames, 135]
+
+[0:132]   22 joints × 6D rotations, HY-Motion column-interleaved layout
+[132:135] absolute global translation [abs_x, abs_y, abs_z]
+```
+
+Coordinate convention:
+
+```text
+Y-up
+X = right
+Y = height/up
+Z = forward
+frame 0 human facing +Z
+```
+
+The optimized motion keeps the original absolute translation trajectory and
+updates the pose rotations.
 
 ## Evaluation
 
