@@ -19,7 +19,7 @@
 </p>
 
 <p align="center">
-  <img src="assets/PoseShield_demo.gif" alt="PoseShield collision resolution demo" width="90%">
+  <img src="assets/PoseShield_demo.gif" alt="PoseShield collision resolution demo" width="60%">
 </p>
 
 **PoseShield** is a post-hoc self-collision resolver for SMPL-H poses and
