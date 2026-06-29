@@ -196,8 +196,14 @@ python tools/render_motion_blender.py \
 
 ## Motion Data Format
 
-PoseShield motion inference, evaluation, and visualization use a canonical
-HY-Motion-compatible motion array:
+PoseShield uses different public representations for pose-level and
+motion-level code:
+
+- Pose-level detection, training, and optimization operate on a single SMPL-H
+  body pose represented as 21 joints × 6D rotations, i.e. shape `[21, 6]` or a
+  flattened 126D vector.
+- Motion-level inference, evaluation, and visualization operate on a canonical
+  HY-Motion-compatible motion array:
 
 ```text
 shape: [frames, 135]
