@@ -65,6 +65,15 @@ At inference time, PoseShield uses this learned field in two ways:
   to the input sequence, and Stage 2 resolves self-collisions while preserving
   hand motion, temporal dynamics, and the original global translation.
 
+## Limitations
+
+The released PoseShield models and datasets assume the neutral SMPL-H body model
+with fixed zero shape parameters (`betas = 0`). Body-shape variation is not
+optimized or modeled in this release. To apply the method to other SMPL body
+shapes, character-specific SMPL humans, Momentum Human Rig, or other human
+parametric models, users may need to build a custom collision dataset for the
+target body model and retrain the collision field.
+
 ## Getting Started
 
 ### 1. Environment Setup
@@ -86,9 +95,7 @@ mkdir -p deps/body_models/smplh
 cp smplh/neutral/model.npz deps/body_models/smplh/SMPLH_NEUTRAL.npz
 ```
 
-PoseShield currently uses the neutral SMPL-H model with fixed zero shape
-parameters (`betas = 0`); body-shape variation is not optimized or modeled in
-this release.
+PoseShield currently uses the neutral SMPL-H model.
 
 ### 3. Download Release Assets
 
