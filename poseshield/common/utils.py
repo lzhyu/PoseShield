@@ -277,7 +277,7 @@ def build_per_triangle_bvh(vertices, faces):
     bvh.endModel()
     return bvh
 
-def visualize_smpl(vertices, faces, save_path="smpl_pose.png"):
+def visualize_smpl(vertices, faces, save_path="smpl_pose.png", color='#54a0ff'):
     """
     Visualize SMPL mesh in 3D and save to a PNG file (no display required).
     """
@@ -299,7 +299,7 @@ def visualize_smpl(vertices, faces, save_path="smpl_pose.png"):
         z_plt,
         triangles=faces,
         shade=True,
-        color='#54a0ff',      # Brighter, modern sky blue
+        color=color,      # Custom color
         edgecolor='none',
         alpha=0.9
     )
@@ -374,7 +374,7 @@ def make_6d_rotation_valid(rot_6d: np.ndarray) -> np.ndarray:
 
 _cached_smpl_model = None
 
-def quick_viz_6d(r_6d, save_path="smpl_pose.png", mesh_path=None, smpl_model=None):
+def quick_viz_6d(r_6d, save_path="smpl_pose.png", mesh_path=None, smpl_model=None, color='#54a0ff'):
     """
     Visualize a 6D rotation vector as a mesh and save to a PNG file.
     r_6d: 21*6
@@ -405,7 +405,7 @@ def quick_viz_6d(r_6d, save_path="smpl_pose.png", mesh_path=None, smpl_model=Non
     vertices, faces = sixd_to_mesh(smpl_model, r_6d, device=device)
         
     # Visualize the mesh
-    visualize_smpl(vertices, faces, save_path=save_path)
+    visualize_smpl(vertices, faces, save_path=save_path, color=color)
     if mesh_path!=None:
         mesh = trimesh.Trimesh(vertices=vertices, faces=faces)
         # Export as OBJ

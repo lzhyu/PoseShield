@@ -102,11 +102,11 @@ def main():
                 body_model_available = True
                 print(f"Loaded SMPL-H model from {model_path} for verification.")
                 
-                if os.path.exists(distance_path):
+                if os.path.exists(distance_path) and os.environ.get("SKIP_METRICS") != "1":
                     distances = pickle.load(open(distance_path, "rb"))
                     print(f"Loaded mesh distance file from {distance_path}.")
                 else:
-                    print(f"Mesh distance file not found at {distance_path}. Skipping collision status checks.")
+                    print(f"Mesh distance file not loaded (does not exist or SKIP_METRICS is enabled). Skipping collision status checks.")
             else:
                 print(f"SMPL-H body model folder not found at {model_path}. Skipping verification.")
         except Exception as e:
@@ -199,10 +199,10 @@ def main():
             opt_obj = os.path.join(args.output_dir, f"{stem}_after.obj")
             
             print(f"Rendering original pose mesh to {ori_png} and {ori_obj}...")
-            quick_viz_6d(rotation_6d, save_path=ori_png, mesh_path=ori_obj)
+            quick_viz_6d(rotation_6d, save_path=ori_png, mesh_path=ori_obj, color='#ff7675')
             
             print(f"Rendering optimized pose mesh to {opt_png} and {opt_obj}...")
-            quick_viz_6d(optimized_x.reshape(21, 6), save_path=opt_png, mesh_path=opt_obj)
+            quick_viz_6d(optimized_x.reshape(21, 6), save_path=opt_png, mesh_path=opt_obj, color='#2ed573')
             
             # If SMPL-H and distance file are loaded, check actual collision status
             if body_model_available and distances is not None:
