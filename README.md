@@ -19,6 +19,10 @@
 </p>
 
 <p align="center">
+  <a href="https://arxiv.org/abs/2606.29686"><img src="https://img.shields.io/badge/arXiv-2606.29686-b31b1b.svg" alt="arXiv"></a>
+</p>
+
+<p align="center">
   <img src="assets/PoseShield_demo.gif" alt="PoseShield collision resolution demo" width="60%">
 </p>
 
@@ -349,6 +353,19 @@ python -m poseshield.pose.train --config-path config_files/basic_config.yaml
 ```
 
 Checkpoints and logs are saved to `experiments/<EXP_NAME>/`.
+
+## Citation
+
+If you find our work useful in your research, please consider citing:
+
+```bibtex
+@inproceedings{li2026poseshield,
+  title={PoseShield: Neural Collision Fields for Human Self-Collision Resolution},
+  author={Li, Zhengyuan and Deng, Zeyun and Shen, Yifan and Gui, Liangyan and Xie, Miaolan and Campbell, Joseph and Gao, Xifeng and Wu, Kui and Pan, Zherong and Bera, Aniket},
+  booktitle={European Conference on Computer Vision (ECCV)},
+  year={2026}
+}
+```
 
 ## Acknowledgements
 
