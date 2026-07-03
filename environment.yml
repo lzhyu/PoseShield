@@ -20,6 +20,7 @@ dependencies:
     - Pillow==12.2.0
     - tqdm==4.68.3
     - torchdiffeq==0.2.5
+    - torchvision==0.20.1
     - transformers==5.12.1
     - accelerate==1.14.0
     - diffusers==0.38.0

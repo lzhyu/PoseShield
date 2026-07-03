@@ -1,0 +1,27 @@
+{
+  "example_idx": 0,
+  "dataset_idx": 93,
+  "topology_threshold": 40,
+  "fcl": {
+    "shape_a_initial": {
+      "has_collision": true,
+      "collision_rate": 2.044640617523624e-06,
+      "total_penetration_depth": 0.9988124611937469
+    },
+    "shape_a_resolved": {
+      "has_collision": false,
+      "collision_rate": 0.0,
+      "total_penetration_depth": 0.0
+    },
+    "shape_b_initial": {
+      "has_collision": true,
+      "collision_rate": 5.10106215918265e-06,
+      "total_penetration_depth": 2.9781008239210935
+    },
+    "shape_b_resolved": {
+      "has_collision": false,
+      "collision_rate": 0.0,
+      "total_penetration_depth": 0.0
+    }
+  }
+}

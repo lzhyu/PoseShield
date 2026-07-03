@@ -107,7 +107,7 @@ venv.bak/
 .idea/
 .DS_Store
 
-# Slurm / cluster files
+# Runtime logs
 *.out
 *.err
 
@@ -140,3 +140,7 @@ demos/output/
 demos/output_test/
 demos/output_motion*/
 poseshield/output/
+*.blend1
+experimental/safield_demo/best_scc_model.pth
+assets/safield_experimental_shape_demo.png
+assets/safield_experimental_shape_demo_blender_full.*

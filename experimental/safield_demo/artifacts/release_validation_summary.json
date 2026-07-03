@@ -1,0 +1,31 @@
+{
+  "example_idx": 0,
+  "dataset_idx": 93,
+  "selection": "stronger_shape_exact_fcl_verified",
+  "selection_reason": "A/B shapes were strengthened within [-2, 2] and re-optimized; exact FCL verifies both initial meshes collide and both resolved meshes are collision-free.",
+  "shape_name": "height_width_contrast",
+  "metrics": {
+    "g_init_a": -0.09639745950698853,
+    "g_init_b": -0.1857193410396576,
+    "g_opt_a": 0.049946676939725876,
+    "g_opt_b": 0.048572152853012085,
+    "mvd_a_m": 0.03190917149186134,
+    "mvd_b_m": 0.04856513440608978,
+    "pure_pose_mvd_m": 0.028076402842998505,
+    "shape_mvd_resolved_m": 0.11316735297441483
+  },
+  "exact_fcl": {
+    "topology_threshold": 40,
+    "shape_a_initial_collision": true,
+    "shape_a_resolved_collision": false,
+    "shape_b_initial_collision": true,
+    "shape_b_resolved_collision": false
+  },
+  "release_assets": {
+    "figure": "assets/safield_experimental_shape_demo_blender.png",
+    "full_render": "assets/safield_experimental_shape_demo_blender_full.png",
+    "blend_file": "assets/safield_experimental_shape_demo_blender_full.blend",
+    "obj_dir": "experimental/safield_demo/artifacts/release_example/release_objs",
+    "fcl_report": "experimental/safield_demo/artifacts/release_example/selected_fcl_report.json"
+  }
+}

@@ -79,6 +79,22 @@ Momentum Human Rig, or other human parametric models, users may need to build a
 custom collision dataset for the target body model and retrain the collision
 field.
 
+## Experimental: Shape-Aware Collision Field
+
+We also include an exploratory standalone SAField demo that conditions the
+collision field on SMPL body-shape coefficients. Starting from the same
+colliding pose, the demo resolves the pose differently for two body shapes while
+keeping both outputs collision-free under exact FCL validation.
+
+<p align="center">
+  <img src="assets/safield_experimental_shape_demo_blender.png" alt="Experimental SAField shape-aware collision resolution" width="90%">
+</p>
+
+This component is provided as an experimental extension rather than the primary
+PoseShield release path. See `experimental/safield_demo/` for the standalone
+model, fixed release example, exact-FCL validation report, Blender-compatible
+OBJ assets, and commands to reproduce the figure above.
+
 ## Getting Started
 
 ### 1. Environment Setup
@@ -113,6 +129,7 @@ Download and extract the PoseShield external assets at the repository root:
 unzip PoseShield_release_dependencies_20260628.zip -d .
 unzip PoseShield_release_pose_data_20260628.zip -d .
 unzip PoseShield_release_motion_data_20260628.zip -d .
+unzip PoseShield_release_safield_demo_20260703.zip -d .  # optional experimental SAField demo
 ```
 
 The three release asset packages are available from the
@@ -133,6 +150,20 @@ The pose data package provides `data/dataset/` for pose model training and
 evaluation, plus `data/dataset_test/` for the pose-level collision-resolution
 benchmark. The motion data package provides the full 100-sample canonical
 motion subset under `data/motion_canonical/`.
+
+The optional SAField demo package provides the experimental shape-aware
+checkpoint and matching config:
+
+| File | Destination | Description |
+|------|-------------|-------------|
+| `best_scc_model.pth` | `experimental/safield_demo/` | Experimental shape-aware collision field checkpoint |
+| `config.yaml` | `experimental/safield_demo/` | SAField model and optimization config |
+
+Expected SHA256 for `PoseShield_release_safield_demo_20260703.zip`:
+
+```text
+e8d3463b3ff9f9cac6473e10b30030c68fd611840566f97b636fe3918d532002
+```
 
 For motion-level resolution, also download [HY-Motion-1.0-Lite](https://github.com/Tencent-Hunyuan/HY-Motion-1.0) and place it under:
 
