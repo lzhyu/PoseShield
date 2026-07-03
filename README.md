@@ -40,6 +40,7 @@ PoseShield provides:
 
 ## News
 
+- **Jul 2026** — Added a preliminary experimental shape-aware collision-field demo for SMPL body-shape variation.
 - **Jun 2026** — Initial code release with training, evaluation, demo, and inference code, plus pre-trained PoseShield checkpoints.
 
 ## Overview
@@ -77,23 +78,8 @@ SMPL-H layer. Body-shape variation is not optimized or modeled in this release.
 To apply the method to other SMPL body shapes, character-specific SMPL humans,
 Momentum Human Rig, or other human parametric models, users may need to build a
 custom collision dataset for the target body model and retrain the collision
-field.
-
-## Experimental: Shape-Aware Collision Field
-
-We also include an exploratory standalone SAField demo that conditions the
-collision field on SMPL body-shape coefficients. Starting from the same
-colliding pose, the demo resolves the pose differently for two body shapes while
-keeping both outputs collision-free under exact FCL validation.
-
-<p align="center">
-  <img src="assets/safield_experimental_shape_demo_blender.png" alt="Experimental SAField shape-aware collision resolution" width="90%">
-</p>
-
-This component is provided as an experimental extension rather than the primary
-PoseShield release path. See `experimental/safield_demo/` for the standalone
-model, fixed release example, exact-FCL validation report, Blender-compatible
-OBJ assets, and commands to reproduce the figure above.
+field. As a preliminary step toward addressing this limitation, we provide an
+experimental shape-aware collision-field feature at the end of this README.
 
 ## Getting Started
 
@@ -406,3 +392,19 @@ This project builds upon [SMPL-X](https://smpl-x.is.tue.mpg.de/), [HY-Motion-1.0
 
 This project is licensed under the MIT License. External body models, datasets,
 and upstream model checkpoints may be subject to their own licenses.
+
+## Experimental: Shape-Aware Collision Field
+
+We also include an exploratory standalone SAField demo that conditions the
+collision field on SMPL body-shape coefficients. Starting from the same
+colliding pose, the demo resolves the pose differently for two body shapes while
+keeping both outputs collision-free under exact FCL validation.
+
+<p align="center">
+  <img src="assets/safield_experimental_shape_demo_blender.png" alt="Experimental SAField shape-aware collision resolution" width="90%">
+</p>
+
+This component is provided as an experimental extension rather than the primary
+PoseShield release path. See `experimental/safield_demo/` for the standalone
+model, fixed release example, exact-FCL validation report, Blender-compatible
+OBJ assets, and commands to reproduce the figure above.
