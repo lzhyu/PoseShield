@@ -171,9 +171,22 @@ def main() -> None:
             str(args.samples),
             "--fps",
             str(args.fps),
+            "--color-a",
+            "0.85",
+            "0.18",
+            "0.18",
+            "1.0",
+            "--color-b",
+            "0.25",
+            "0.75",
+            "0.32",
+            "1.0",
         ],
         check=True,
     )
+    rendered_frames = sorted(frames_dir.glob("frame_*.png"))
+    if not rendered_frames:
+        raise RuntimeError(f"Blender did not render any PNG frames under {frames_dir}")
     encode_frames_with_ffmpeg(args.ffmpeg_path, frames_dir, output_path, args.fps)
     shutil.rmtree(work_dir)
     print(f"Video saved to {output_path}")

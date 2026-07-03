@@ -27,13 +27,18 @@ def get_args():
     parser.add_argument("--motion_file", type=str, required=True, help="Path to reference motion file (npy)")
 
     # Stage 1: pure similarity fitting
-    parser.add_argument("--s1_steps", type=int, default=300, help="Stage 1 optimization steps")
-    parser.add_argument("--s1_lr", type=float, default=0.05, help="Stage 1 learning rate")
-    parser.add_argument("--s1_ode_steps", type=int, default=50, help="Number of ODE steps for Stage 1")
+    parser.add_argument("--s1_steps", type=int, default=150, help="Stage 1 optimization steps")
+    parser.add_argument("--s1_lr", type=float, default=0.1, help="Stage 1 learning rate")
+    parser.add_argument("--s1_ode_steps", type=int, default=20, help="Number of ODE steps for Stage 1")
     parser.add_argument("--use_adjoint", action="store_true", help="Use adjoint method for ODE backpropagation")
     parser.add_argument("--no_use_adjoint", action="store_false", dest="use_adjoint", help="Use standard direct backpropagation (faster)")
     parser.set_defaults(use_adjoint=False)
-    parser.add_argument("--s1_early_stop_err", type=float, default=0.005, help="Stop optimization if joint position error is below this threshold (set <= 0 to disable)")
+    parser.add_argument(
+        "--s1_early_stop_err",
+        type=float,
+        default=0.0,
+        help="Deprecated compatibility option; Stage 1 does not early-stop.",
+    )
     parser.add_argument("--s1_phase1_steps", type=int, default=0, help="Number of steps in Phase 1 (pure rot + trans loss, no SMPL FK). Default 0 (phased optimization disabled)")
 
     # Stage 1 similarity coefficients
@@ -42,16 +47,20 @@ def get_args():
     parser.add_argument("--s1_joint_velocity_coef", type=float, default=0.1)
     parser.add_argument("--s1_hand_joint_velocity_coef", type=float, default=0.0)
     parser.add_argument("--s1_lower_body_coef", type=float, default=0.0)
-    parser.add_argument("--s1_translation_coef", type=float, default=0.0, help="Weight coefficient for translation loss in Stage 1")
-    parser.add_argument("--s1_translation_smooth_coef", type=float, default=0.0, help="Weight coefficient for translation smoothness loss in Stage 1")
-    parser.add_argument("--s1_translation_smooth_mode", type=str, default="first_diff", choices=["first_diff", "second_diff_abs"], help="Translation smoothing loss mode")
-    parser.add_argument("--s1_translation_smooth_loss_type", type=str, default="mse", choices=["mse", "l1", "huber"], help="Loss type for translation smoothing")
+    parser.add_argument("--s1_translation_coef", type=float, default=1.0, help="Weight coefficient for translation loss in Stage 1")
+    parser.add_argument("--s1_translation_smooth_coef", type=float, default=15.0, help="Weight coefficient for translation smoothness loss in Stage 1")
+    parser.add_argument("--s1_translation_smooth_mode", type=str, default="second_diff_abs", choices=["first_diff", "second_diff_abs"], help="Translation smoothing loss mode")
+    parser.add_argument("--s1_translation_smooth_loss_type", type=str, default="l1", choices=["mse", "l1", "huber"], help="Loss type for translation smoothing")
+    parser.add_argument("--s1_translation_mode", type=str, default="abs_3d", choices=["gt_format", "abs_3d"], help="Translation similarity loss mode")
+    parser.add_argument("--s1_rotation_coef", type=float, default=10.0, help="Rotation scaling coefficient for root and body rotations")
+    parser.add_argument("--s1_rot_velocity_coef", type=float, default=5.0, help="Rotation velocity loss coefficient")
+    parser.add_argument("--s1_upper_body_rot_weight", type=float, default=5.0, help="Weight scaling factor for upper body and wrist joints")
     parser.add_argument("--s1_weighted_rot_loss", action="store_true", help="Use subtree-size weighted rotation loss for Stage 1")
     parser.add_argument("--no_s1_weighted_rot_loss", action="store_false", dest="s1_weighted_rot_loss", help="Do not use subtree-size weighted rotation loss for Stage 1")
     parser.set_defaults(s1_weighted_rot_loss=True)
 
     # LR Scheduler options
-    parser.add_argument("--s1_lr_warmup_steps", type=int, default=50, help="Number of warmup steps for Stage 1 LR scheduler")
+    parser.add_argument("--s1_lr_warmup_steps", type=int, default=0, help="Number of warmup steps for Stage 1 LR scheduler")
     parser.add_argument("--s1_lr_decay_steps", type=int, default=None, help="Number of decay steps for Stage 1 LR scheduler")
     return parser.parse_args()
 
@@ -194,7 +203,10 @@ def main():
         use_weighted_loss=args.s1_weighted_rot_loss,
         translation_smooth_mode=args.s1_translation_smooth_mode,
         translation_smooth_loss_type=args.s1_translation_smooth_loss_type,
-        translation_mode="abs_3d"
+        translation_mode=args.s1_translation_mode,
+        rotation_coef=args.s1_rotation_coef,
+        rot_velocity_coef=args.s1_rot_velocity_coef,
+        upper_body_rot_weight=args.s1_upper_body_rot_weight,
     )
     loss_collision = MotionCollisionLoss(device, collision_threshold=999.0) # monitor only
 
@@ -249,13 +261,11 @@ def main():
                 std_safe = torch.where(std_zero, torch.ones_like(cur_std), cur_std)
                 x_unnorm = x * std_safe + cur_mean
                 
+                gen_trans = x_unnorm[:, :min_len, 0:3]
                 target_root = motion_target_unnorm[:, 0:6].unsqueeze(0).expand(x.shape[0], -1, -1)
                 gen_body = x_unnorm[:, :min_len, 9:135]
-                target_translation = motion_target_unnorm[:, 132:135].unsqueeze(0).expand(
-                    x.shape[0], -1, -1
-                )
                 
-                gen_135 = torch.cat([target_root, gen_body, target_translation], dim=-1)
+                gen_135 = torch.cat([target_root, gen_body, gen_trans], dim=-1)
                 # Assuming batch_size=1
                 joints_pred = parameters_to_joints(gen_135[0], smpl_model_eval, device)
                 step_joint_err = torch.nn.functional.mse_loss(joints_pred, joints_target).item()
@@ -263,12 +273,11 @@ def main():
                 step_joint_err = joint_pos_err_history[-1] if joint_pos_err_history else 9.99
 
             joint_pos_err_history.append(step_joint_err)
-            stop_early = (args.s1_early_stop_err > 0 and step_joint_err <= args.s1_early_stop_err)
             step_count[0] += 1
 
         loss_logs["similarity"].append(l_sim.item())
         loss_logs["collision"].append(l_col.item())
-        return l_sim, {"sim": l_sim.item(), "col": l_col.item(), "joint_err": step_joint_err, "stop_early": stop_early}
+        return l_sim, {"sim": l_sim.item(), "col_monitor": l_col.item(), "joint_err": step_joint_err}
 
     s1_options = DNOOptions(
         num_opt_steps=args.s1_steps,

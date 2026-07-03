@@ -80,8 +80,8 @@ def main() -> None:
         "timestamp": f"visualization_{args.sequence}",
         "text": f"Sequence {args.sequence} collision-resolution comparison",
         "text_rewrite": [
-            "Blue / left: original motion",
-            "Red / right: optimized pose with the original translation trajectory",
+            "Red / left: original motion",
+            "Green / right: optimized pose with the original translation trajectory",
         ],
         "num_samples": 2,
         "base_filename": base_name,

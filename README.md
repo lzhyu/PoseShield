@@ -28,8 +28,9 @@
 
 **PoseShield** is a post-hoc self-collision resolver for SMPL-H poses and
 human motion sequences. It uses a learned neural collision field as a
-differentiable constraint, so generated poses and motions can be repaired
-without retraining the upstream generator.
+differentiable constraint, so existing poses and motions can be repaired as a
+post-processing step without retraining, modifying, or even knowing the upstream
+system that produced them.
 
 PoseShield provides:
 
@@ -52,6 +53,9 @@ PoseShield provides:
 PoseShield treats self-collision correction as a post-hoc optimization problem:
 given a self-intersecting SMPL-H pose or motion, find a nearby collision-free
 result while preserving the original pose semantics and motion dynamics.
+The input can come from a generative model, motion capture cleanup pipeline,
+dataset preprocessing workflow, or any other source that can be represented in
+the public SMPL-H/HY-Motion-compatible layouts below.
 
 The core component is a neural collision field defined directly in SMPL-H pose
 space. The field is trained to be positive for collision-free poses and negative
@@ -239,6 +243,17 @@ python -m poseshield.hymotion.dno.run_dno_stage2 \
     --output_dir demos/output_motion/${STEM}_stage2
 ```
 
+The motion demo defaults use the release preset validated in the autoresearch
+loop. Stage 1 runs 150 latent-fitting steps with learning rate 0.1, 20 ODE
+steps, relative absolute-XYZ translation fitting, second-difference translation
+smoothing, and no early-stop. Stage 2 runs 150 collision-resolution steps with
+`collision_threshold=0.08`, `collision_scale=6.0`,
+`col_return_threshold=1e-4`, `wrist_position_coef=12.0`,
+`rotation_velocity_scale=5.0`, and `upper_body_velocity_scale=3.0`.
+This preset was validated on the three included `demo_asset/motion_sample*.npy`
+sequences against the autoresearch reference implementation, exact-FCL
+collision checks, and Blender MP4 rendering.
+
 Stage 2 writes:
 
 ```text
@@ -260,6 +275,8 @@ python tools/evaluate_exact_fcl.py \
 
 If exact mesh collisions remain, the tool exits with a non-zero status after writing `exact_fcl_results.json`.
 This exact-FCL check is the core geometry-level validation for motion outputs.
+A successful demo run should exit with status 0 and report no remaining exact
+mesh self-collisions.
 
 ### HTML Visualization
 
@@ -291,6 +308,8 @@ python tools/render_motion_blender.py \
 ```
 
 Blender/MP4 rendering is optional and is not required for PoseShield evaluation.
+The default render colors are red for the original motion and green for the
+optimized motion.
 
 ## Motion Data Format
 

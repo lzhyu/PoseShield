@@ -113,7 +113,10 @@ class MotionSimilarityLoss:
                  lower_body_coef=0.0, translation_coef=0.0,
                  translation_smooth_coef=0.0, motion_length=None, use_weighted_loss=False,
                  translation_smooth_mode="first_diff", translation_smooth_loss_type="mse",
-                 translation_mode="abs_3d", use_final_output_geometry=False):
+                 translation_mode="abs_3d", use_final_output_geometry=False,
+                 rotation_coef=1.0, rot_velocity_coef=0.0,
+                 upper_body_rot_weight=1.0, head_rotation_coef=0.0,
+                 head_rot_velocity_coef=0.0):
         self.device = device
         # Load motion file (expecting [Frames, D] numpy array)
         self.use_weighted_loss = use_weighted_loss
@@ -149,6 +152,11 @@ class MotionSimilarityLoss:
         self.translation_smooth_loss_type = translation_smooth_loss_type
         self.translation_mode = translation_mode
         self.use_final_output_geometry = use_final_output_geometry
+        self.rotation_coef = rotation_coef
+        self.rot_velocity_coef = rot_velocity_coef
+        self.upper_body_rot_weight = upper_body_rot_weight
+        self.head_rotation_coef = head_rotation_coef
+        self.head_rot_velocity_coef = head_rot_velocity_coef
 
         self.use_smpl_loss = (
             joint_position_coef > 0.0
@@ -217,6 +225,10 @@ class MotionSimilarityLoss:
         # Per-joint L2 norm of 6D rotation difference, then mean over joints and frames
         diff = gen_joints_6d - tgt_joints_6d                        # [B, L, 21, 6]
         per_joint_norm = torch.linalg.norm(diff, dim=-1)            # [B, L, 21]
+        if self.upper_body_rot_weight != 1.0:
+            body_weights = torch.ones(21, device=self.device)
+            body_weights[11:] = self.upper_body_rot_weight
+            per_joint_norm = per_joint_norm * body_weights.view(1, 1, 21)
         
         # Also compute root rotation loss (both are column-interleaved 6D format)
         gen_root_rot = x_unnorm[..., 3:9]
@@ -232,7 +244,23 @@ class MotionSimilarityLoss:
         else:
             base_loss = per_joint_norm.mean()                       # uniform mean
             
-        base_loss = base_loss + root_loss
+        base_loss = self.rotation_coef * base_loss + self.rotation_coef * root_loss
+
+        if self.head_rotation_coef > 0.0:
+            head_rot_loss = F.mse_loss(gen_joints_6d[:, :, 14], tgt_joints_6d[:, :, 14])
+            base_loss = base_loss + self.head_rotation_coef * head_rot_loss
+
+        if self.head_rot_velocity_coef > 0.0:
+            gen_head_vel = gen_joints_6d[:, 1:, 14] - gen_joints_6d[:, :-1, 14]
+            tgt_head_vel = tgt_joints_6d[:, 1:, 14] - tgt_joints_6d[:, :-1, 14]
+            head_rot_vel_loss = F.mse_loss(gen_head_vel, tgt_head_vel)
+            base_loss = base_loss + self.head_rot_velocity_coef * head_rot_vel_loss
+
+        if self.rot_velocity_coef > 0.0:
+            gen_rot_vel = gen_joints_6d[:, 1:] - gen_joints_6d[:, :-1]
+            tgt_rot_vel = tgt_joints_6d[:, 1:] - tgt_joints_6d[:, :-1]
+            rot_vel_loss = F.mse_loss(gen_rot_vel, tgt_rot_vel)
+            base_loss = base_loss + self.rot_velocity_coef * rot_vel_loss
         
         if self.translation_coef > 0.0:
             gen_trans = x_unnorm[:, :min_len, 0:3]
@@ -240,7 +268,12 @@ class MotionSimilarityLoss:
             target_trans = self.motion_target[..., 132:135].unsqueeze(0).expand(gen_trans.shape[0], -1, -1)
             target_pos_abs = target_trans[:, :min_len]
             
-            trans_loss = F.mse_loss(gen_pos_abs, target_pos_abs)
+            if self.translation_mode == "abs_3d":
+                gen_pos_rel = gen_pos_abs - gen_pos_abs[:, :1]
+                target_pos_rel = target_pos_abs - target_pos_abs[:, :1]
+                trans_loss = F.mse_loss(gen_pos_rel, target_pos_rel)
+            else:
+                trans_loss = F.mse_loss(gen_pos_abs, target_pos_abs)
                 
             base_loss = base_loss + self.translation_coef * trans_loss
             
@@ -591,12 +624,13 @@ def parameters_to_joints(parameters, smpl_model, device):
     global_rot_mats = rotation_6d_to_matrix_torch(global_orient_6d)
     global_axis_angles = matrix_to_axis_angle_torch(global_rot_mats)
     global_axis_angles = global_axis_angles.reshape(T, 3)
+    trans = parameters[:, -3:]
     # Forward pass through SMPL
     output = smpl_model(
         global_orient=global_axis_angles,    # zero global orientation
         body_pose=axis_angles,        # 23 axis-angle joints, should be [1, 63]
         betas=None,
-        transl=None,
+        transl=trans,
         return_verts=False
     )# T, N_J, 3
     # Return the joints from the SMPL output

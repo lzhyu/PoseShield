@@ -29,8 +29,8 @@ def parse_args():
     parser.add_argument("--output-dir", type=str, default="frames", help="Directory to write frame PNGs")
     parser.add_argument("--engine", type=str, default="BLENDER_EEVEE")
     parser.add_argument("--samples", type=int, default=32)
-    parser.add_argument("--color-a", type=float, nargs=4, default=[0.85, 0.35, 0.35, 1.0])
-    parser.add_argument("--color-b", type=float, nargs=4, default=[0.35, 0.75, 0.45, 1.0])
+    parser.add_argument("--color-a", type=float, nargs=4, default=[0.85, 0.18, 0.18, 1.0])
+    parser.add_argument("--color-b", type=float, nargs=4, default=[0.25, 0.75, 0.32, 1.0])
     parser.add_argument("--metallic", type=float, default=0.0)
     parser.add_argument("--roughness", type=float, default=0.85)
     parser.add_argument("--camera-yaw", type=float, default=0.0)
@@ -70,11 +70,29 @@ def create_clean_material(name, base_color, metallic=0.0, roughness=0.85):
     bsdf.inputs['Base Color'].default_value = base_color
     bsdf.inputs['Metallic'].default_value = metallic
     bsdf.inputs['Roughness'].default_value = roughness
-    bsdf.inputs['Specular'].default_value = 0.0
+    if 'Specular' in bsdf.inputs:
+        bsdf.inputs['Specular'].default_value = 0.0
+    elif 'Specular IOR Level' in bsdf.inputs:
+        bsdf.inputs['Specular IOR Level'].default_value = 0.0
     bsdf.inputs['Alpha'].default_value = 1.0
 
     links.new(bsdf.outputs['BSDF'], output.inputs['Surface'])
     return mat
+
+
+def resolve_render_engine(scene, requested_engine):
+    """Return a Blender render-engine identifier compatible with this version."""
+    available_engines = {
+        item.identifier for item in scene.render.bl_rna.properties["engine"].enum_items
+    }
+    if requested_engine in available_engines:
+        return requested_engine
+    if requested_engine == "BLENDER_EEVEE" and "BLENDER_EEVEE_NEXT" in available_engines:
+        return "BLENDER_EEVEE_NEXT"
+    raise ValueError(
+        f"Render engine {requested_engine!r} is not available; "
+        f"available engines: {sorted(available_engines)}"
+    )
 
 
 def create_mesh_object(name, vertices, faces, material, location_offset):
@@ -98,8 +116,10 @@ def create_mesh_object(name, vertices, faces, material, location_offset):
     # Smooth shading + auto-smooth
     for poly in obj.data.polygons:
         poly.use_smooth = True
-    mesh.use_auto_smooth = True
-    mesh.auto_smooth_angle = 1.0472  # 60°
+    if hasattr(mesh, "use_auto_smooth"):
+        mesh.use_auto_smooth = True
+    if hasattr(mesh, "auto_smooth_angle"):
+        mesh.auto_smooth_angle = 1.0472  # 60 degrees
 
     return obj
 
@@ -246,7 +266,8 @@ def main():
 
     # Render settings
     scene = bpy.context.scene
-    scene.render.engine = args.engine
+    render_engine = resolve_render_engine(scene, args.engine)
+    scene.render.engine = render_engine
     scene.render.resolution_x = args.res_x
     scene.render.resolution_y = args.res_y
     scene.render.resolution_percentage = 100
@@ -254,12 +275,15 @@ def main():
     scene.render.image_settings.color_mode = 'RGBA'
     scene.render.film_transparent = False
 
-    if args.engine == 'CYCLES':
+    if render_engine == 'CYCLES':
         scene.cycles.samples = args.samples
         scene.cycles.device = 'GPU'
     else:
-        scene.eevee.taa_render_samples = args.samples
-        scene.eevee.use_soft_shadows = True
+        if hasattr(scene, "eevee"):
+            if hasattr(scene.eevee, "taa_render_samples"):
+                scene.eevee.taa_render_samples = args.samples
+            if hasattr(scene.eevee, "use_soft_shadows"):
+                scene.eevee.use_soft_shadows = True
 
     # Render each frame
     print(f"Rendering {L} frames to {args.output_dir}/...")
