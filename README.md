@@ -371,6 +371,22 @@ python -m poseshield.pose.train --config-path config_files/basic_config.yaml
 
 Checkpoints and logs are saved to `experiments/<EXP_NAME>/`.
 
+## Experimental: Shape-Aware Collision Field
+
+We also include an exploratory standalone SAField demo that conditions the
+collision field on SMPL body-shape coefficients. Starting from the same
+colliding pose, the demo resolves the pose differently for two body shapes while
+keeping both outputs collision-free under exact FCL validation.
+
+<p align="center">
+  <img src="assets/safield_experimental_shape_demo_blender.png" alt="Experimental SAField shape-aware collision resolution" width="90%">
+</p>
+
+This component is provided as an experimental extension rather than the primary
+PoseShield release path. See `experimental/safield_demo/` for the standalone
+model, fixed release example, exact-FCL validation report, Blender-compatible
+OBJ assets, and commands to reproduce the figure above.
+
 ## Citation
 
 If you find our work useful in your research, please consider citing:
@@ -392,19 +408,3 @@ This project builds upon [SMPL-X](https://smpl-x.is.tue.mpg.de/), [HY-Motion-1.0
 
 This project is licensed under the MIT License. External body models, datasets,
 and upstream model checkpoints may be subject to their own licenses.
-
-## Experimental: Shape-Aware Collision Field
-
-We also include an exploratory standalone SAField demo that conditions the
-collision field on SMPL body-shape coefficients. Starting from the same
-colliding pose, the demo resolves the pose differently for two body shapes while
-keeping both outputs collision-free under exact FCL validation.
-
-<p align="center">
-  <img src="assets/safield_experimental_shape_demo_blender.png" alt="Experimental SAField shape-aware collision resolution" width="90%">
-</p>
-
-This component is provided as an experimental extension rather than the primary
-PoseShield release path. See `experimental/safield_demo/` for the standalone
-model, fixed release example, exact-FCL validation report, Blender-compatible
-OBJ assets, and commands to reproduce the figure above.
