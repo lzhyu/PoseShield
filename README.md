@@ -243,8 +243,7 @@ python -m poseshield.hymotion.dno.run_dno_stage2 \
     --output_dir demos/output_motion/${STEM}_stage2
 ```
 
-The demo scripts use validated release defaults, so no hyperparameter tuning is
-needed for the included examples.
+The demo scripts use validated release defaults.
 
 Stage 2 writes:
 
