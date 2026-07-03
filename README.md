@@ -243,16 +243,8 @@ python -m poseshield.hymotion.dno.run_dno_stage2 \
     --output_dir demos/output_motion/${STEM}_stage2
 ```
 
-The motion demo defaults use the release preset validated in the autoresearch
-loop. Stage 1 runs 150 latent-fitting steps with learning rate 0.1, 20 ODE
-steps, relative absolute-XYZ translation fitting, second-difference translation
-smoothing, and no early-stop. Stage 2 runs 150 collision-resolution steps with
-`collision_threshold=0.08`, `collision_scale=6.0`,
-`col_return_threshold=1e-4`, `wrist_position_coef=12.0`,
-`rotation_velocity_scale=5.0`, and `upper_body_velocity_scale=3.0`.
-This preset was validated on the three included `demo_asset/motion_sample*.npy`
-sequences against the autoresearch reference implementation, exact-FCL
-collision checks, and Blender MP4 rendering.
+The demo scripts use validated release defaults, so no hyperparameter tuning is
+needed for the included examples.
 
 Stage 2 writes:
 
