@@ -355,10 +355,7 @@ optimized motion.
 
 </details>
 
-<details>
-<summary><b>Evaluation</b></summary>
-
-<br>
+## Evaluation
 
 The following pose-level evaluation commands require the released pose benchmark
 split and the dependency package described above. The small files under
@@ -396,12 +393,7 @@ Pose-level SLSQP logs report three separate statuses:
 
 The default SLSQP iteration budget is `--max-itr 300`.
 
-</details>
-
-<details>
-<summary><b>Training</b></summary>
-
-<br>
+## Training
 
 Train the collision field from scratch:
 
@@ -411,12 +403,7 @@ python -m poseshield.pose.train --config-path config_files/basic_config.yaml
 
 Checkpoints and logs are saved to `experiments/<EXP_NAME>/`.
 
-</details>
-
-<details>
-<summary><b>Experimental: Shape-Aware Collision Field</b></summary>
-
-<br>
+## Experimental: Shape-Aware Collision Field
 
 We also include an exploratory standalone SAField demo that conditions the
 collision field on SMPL body-shape coefficients. Starting from the same
@@ -431,8 +418,6 @@ This component is provided as an experimental extension rather than the primary
 PoseShield release path. See `experimental/safield_demo/` for the standalone
 model, fixed release example, exact-FCL validation report, Blender-compatible
 OBJ assets, and commands to reproduce the figure above.
-
-</details>
 
 ## Citation
 
