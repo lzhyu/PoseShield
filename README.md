@@ -39,10 +39,12 @@ PoseShield provides:
 - exact mesh/FCL validation utilities;
 - browser-based motion visualization and optional Blender rendering.
 
-## News
+## Release Status
 
-- **Jul 2026** — Added a preliminary experimental shape-aware collision-field demo for SMPL body-shape variation.
-- **Jun 2026** — Initial code release with training, evaluation, demo, and inference code, plus pre-trained PoseShield checkpoints.
+- [x] Pose-level self-collision detection, correction, training, and evaluation.
+- [x] Motion-level collision resolution demos with released checkpoints.
+- [x] Exact-FCL validation plus HTML and optional Blender visualization tools.
+- [x] Experimental shape-aware SAField demo for SMPL body-shape variation.
 
 ## Overview
 
