@@ -114,7 +114,7 @@ Download and extract the PoseShield external assets at the repository root:
 unzip PoseShield_release_dependencies_20260628.zip -d .
 unzip PoseShield_release_pose_data_20260628.zip -d .
 unzip PoseShield_release_motion_data_20260628.zip -d .
-unzip -o PoseShield_release_safield_demo_20260703.zip -d .  # optional experimental SAField demo
+unzip PoseShield_release_safield_demo_20260703.zip -d .  # optional experimental SAField demo
 ```
 
 The release asset packages are available from the
@@ -155,7 +155,8 @@ pose benchmark subset used by the pose-level collision-resolution script.
 
 The motion data package provides 100 canonical MotionFix motion samples under
 `data/motion_canonical/`. The optional SAField package provides the experimental
-shape-aware checkpoint and config under `experimental/safield_demo/`.
+shape-aware checkpoint under `experimental/safield_demo/`; the matching config
+is included in the repository.
 
 After downloading the release assets, the main required files should look like:
 
