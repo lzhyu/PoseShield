@@ -119,6 +119,35 @@ unzip PoseShield_release_safield_demo_20260703.zip -d .  # optional experimental
 The release asset packages are available from the
 [PoseShield Google Drive folder](https://drive.google.com/drive/folders/1gLdFy4OTfYaKeaZ3olqShyh3kF2m5ogf?usp=sharing).
 
+For motion-level resolution, also download [HY-Motion-1.0-Lite](https://github.com/Tencent-Hunyuan/HY-Motion-1.0) and place it under:
+
+```text
+ckpts/tencent/HY-Motion-1.0-Lite/
+```
+
+This directory should contain the HY-Motion checkpoint, its config file, and normalization statistics:
+
+```text
+ckpts/tencent/HY-Motion-1.0-Lite/latest.ckpt
+ckpts/tencent/HY-Motion-1.0-Lite/config.yaml  # or config.yml
+ckpts/tencent/HY-Motion-1.0-Lite/stats/Mean.npy
+ckpts/tencent/HY-Motion-1.0-Lite/stats/Std.npy
+```
+
+Validate the asset layout with:
+
+```bash
+python tools/check_assets.py
+```
+
+The script prints present and missing asset groups, and exits with a non-zero
+status if any required asset is missing.
+
+<details>
+<summary><b>Release Asset Contents and Expected Layout</b></summary>
+
+<br>
+
 The dependency package provides PoseShield checkpoints, HY-Motion normalization
 statistics, and the exact-FCL mesh distance table:
 
@@ -139,21 +168,6 @@ pose benchmark subset used by the pose-level collision-resolution script.
 The motion data package provides 100 canonical MotionFix motion samples under
 `data/motion_canonical/`. The optional SAField package provides the experimental
 shape-aware checkpoint and config under `experimental/safield_demo/`.
-
-For motion-level resolution, also download [HY-Motion-1.0-Lite](https://github.com/Tencent-Hunyuan/HY-Motion-1.0) and place it under:
-
-```text
-ckpts/tencent/HY-Motion-1.0-Lite/
-```
-
-This directory should contain the HY-Motion checkpoint, its config file, and normalization statistics:
-
-```text
-ckpts/tencent/HY-Motion-1.0-Lite/latest.ckpt
-ckpts/tencent/HY-Motion-1.0-Lite/config.yaml  # or config.yml
-ckpts/tencent/HY-Motion-1.0-Lite/stats/Mean.npy
-ckpts/tencent/HY-Motion-1.0-Lite/stats/Std.npy
-```
 
 After downloading the release assets, the main required files should look like:
 
@@ -196,14 +210,7 @@ experimental/
     +-- config.yaml
 ```
 
-Validate the asset layout with:
-
-```bash
-python tools/check_assets.py
-```
-
-The script prints present and missing asset groups, and exits with a non-zero
-status if any required asset is missing.
+</details>
 
 The repository includes small ready-to-run motion demos in `demo_asset/`. The full released canonical motion subset is distributed separately through the project release assets.
 
@@ -225,7 +232,10 @@ Run the interactive demo:
 bash demos/demo_motion.sh
 ```
 
-Or run the two stages explicitly:
+<details>
+<summary><b>Run the Two Motion Stages Explicitly</b></summary>
+
+<br>
 
 ```bash
 SAMPLE=motion_sample2.npy
@@ -255,6 +265,8 @@ args.json
 ```
 
 The optimized motion copies the original absolute translation trajectory and updates only the pose rotations.
+
+</details>
 
 <details>
 <summary><b>Exact Mesh/FCL Collision Check</b></summary>
@@ -317,7 +329,10 @@ optimized motion.
 
 </details>
 
-## Motion Data Format
+<details>
+<summary><b>Motion Data Format</b></summary>
+
+<br>
 
 PoseShield uses different public representations for pose-level and
 motion-level code:
@@ -348,7 +363,12 @@ frame 0 human facing +Z
 The optimized motion keeps the original absolute translation trajectory and
 updates the pose rotations.
 
-## Evaluation
+</details>
+
+<details>
+<summary><b>Evaluation</b></summary>
+
+<br>
 
 The following pose-level evaluation commands require the released pose benchmark
 split and the dependency package described above. The small files under
@@ -386,7 +406,12 @@ Pose-level SLSQP logs report three separate statuses:
 
 The default SLSQP iteration budget is `--max-itr 300`.
 
-## Training
+</details>
+
+<details>
+<summary><b>Training</b></summary>
+
+<br>
 
 Train the collision field from scratch:
 
@@ -396,7 +421,12 @@ python -m poseshield.pose.train --config-path config_files/basic_config.yaml
 
 Checkpoints and logs are saved to `experiments/<EXP_NAME>/`.
 
-## Experimental: Shape-Aware Collision Field
+</details>
+
+<details>
+<summary><b>Experimental: Shape-Aware Collision Field</b></summary>
+
+<br>
 
 We also include an exploratory standalone SAField demo that conditions the
 collision field on SMPL body-shape coefficients. Starting from the same
@@ -411,6 +441,8 @@ This component is provided as an experimental extension rather than the primary
 PoseShield release path. See `experimental/safield_demo/` for the standalone
 model, fixed release example, exact-FCL validation report, Blender-compatible
 OBJ assets, and commands to reproduce the figure above.
+
+</details>
 
 ## Citation
 
