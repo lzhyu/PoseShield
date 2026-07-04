@@ -407,6 +407,10 @@ field on SMPL body-shape coefficients. Starting from a fixed colliding pose, the
 demo loads the released experimental checkpoint, resolves the pose for two body
 shapes, and can export the input and resolved meshes as OBJ files.
 
+<p align="center">
+  <img src="assets/safield_experimental_shape_demo_blender.png" alt="Experimental SAField shape-aware collision resolution" width="90%">
+</p>
+
 This component is provided as an experimental extension rather than the primary
 PoseShield release path. See `experimental/safield_demo/` for the model config,
 fixed sample, and command to reproduce the OBJ outputs.
