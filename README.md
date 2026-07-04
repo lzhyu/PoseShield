@@ -256,7 +256,10 @@ args.json
 
 The optimized motion copies the original absolute translation trajectory and updates only the pose rotations.
 
-### Exact Mesh/FCL Collision Check
+<details>
+<summary><b>Exact Mesh/FCL Collision Check</b></summary>
+
+<br>
 
 ```bash
 python tools/evaluate_exact_fcl.py \
@@ -269,7 +272,12 @@ This exact-FCL check is the core geometry-level validation for motion outputs.
 A successful demo run should exit with status 0 and report no remaining exact
 mesh self-collisions.
 
-### HTML Visualization
+</details>
+
+<details>
+<summary><b>HTML Visualization</b></summary>
+
+<br>
 
 ```bash
 python tools/generate_motion_html.py \
@@ -282,7 +290,12 @@ python tools/generate_motion_html.py \
 Open the generated `*_vis.html` file in a browser.
 This is the lightweight visualization path and does not require Blender.
 
-### Optional Blender MP4 Rendering
+</details>
+
+<details>
+<summary><b>Optional Blender MP4 Rendering</b></summary>
+
+<br>
 
 For a higher-quality MP4 render, install Blender manually and use an FFmpeg
 build with `libx264` support when possible. Some system FFmpeg modules do not
@@ -301,6 +314,8 @@ python tools/render_motion_blender.py \
 Blender/MP4 rendering is optional and is not required for PoseShield evaluation.
 The default render colors are red for the original motion and green for the
 optimized motion.
+
+</details>
 
 ## Motion Data Format
 
