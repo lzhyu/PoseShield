@@ -124,11 +124,11 @@ unzip PoseShield_release_motion_data_20260628.zip -d .
 unzip PoseShield_release_safield_demo_20260703.zip -d .  # optional experimental SAField demo
 ```
 
-The three release asset packages are available from the
+The release asset packages are available from the
 [PoseShield Google Drive folder](https://drive.google.com/drive/folders/1gLdFy4OTfYaKeaZ3olqShyh3kF2m5ogf?usp=sharing).
 
-The dependency package provides the PoseShield checkpoints and exact-FCL mesh
-distance table:
+The dependency package provides PoseShield checkpoints, HY-Motion normalization
+statistics, and the exact-FCL mesh distance table:
 
 | File | Destination | Description |
 |------|-------------|-------------|
@@ -137,25 +137,16 @@ distance table:
 | `model_elu.pth` | `ckpts/poseshield/` | ELU collision field for motion resolution |
 | `config_elu.yaml` | `ckpts/poseshield/` | ELU collision field config |
 | `distances.pkl` | `deps/` | Mesh topology distances for exact-FCL checks |
+| `Mean.npy`, `Std.npy` | `ckpts/tencent/HY-Motion-1.0-Lite/stats/` | HY-Motion normalization statistics |
 
-The pose data package provides `data/dataset/` for pose model training and
-evaluation, plus `data/dataset_test/` for the pose-level collision-resolution
-benchmark. The motion data package provides the full 100-sample canonical
-motion subset under `data/motion_canonical/`.
+The pose data package provides the released **Humans with Collisions (HwC)**
+pose dataset. `data/dataset/` is used for collision-field training and
+classification evaluation. `data/dataset_test/` contains the 500 self-colliding
+pose benchmark subset used by the pose-level collision-resolution script.
 
-The optional SAField demo package provides the experimental shape-aware
-checkpoint and matching config:
-
-| File | Destination | Description |
-|------|-------------|-------------|
-| `best_scc_model.pth` | `experimental/safield_demo/` | Experimental shape-aware collision field checkpoint |
-| `config.yaml` | `experimental/safield_demo/` | SAField model and optimization config |
-
-Expected SHA256 for `PoseShield_release_safield_demo_20260703.zip`:
-
-```text
-e8d3463b3ff9f9cac6473e10b30030c68fd611840566f97b636fe3918d532002
-```
+The motion data package provides 100 canonical MotionFix motion samples under
+`data/motion_canonical/`. The optional SAField package provides the experimental
+shape-aware checkpoint and config under `experimental/safield_demo/`.
 
 For motion-level resolution, also download [HY-Motion-1.0-Lite](https://github.com/Tencent-Hunyuan/HY-Motion-1.0) and place it under:
 
@@ -180,6 +171,14 @@ deps/
 |   +-- smplh/
 |       +-- SMPLH_NEUTRAL.npz
 +-- distances.pkl
+data/
++-- dataset/                     # Humans with Collisions (HwC) train/test data
+|   +-- train_list.csv
+|   +-- test_list.csv
+|   +-- augmented_data/
+|   +-- gt_data/
++-- dataset_test/                # HwC 500-pose collision-resolution benchmark
++-- motion_canonical/            # 100 canonical MotionFix motion sequences
 ckpts/
 +-- poseshield/
 |   +-- config.yaml
@@ -193,12 +192,22 @@ ckpts/
         +-- stats/
             +-- Mean.npy
             +-- Std.npy
+experimental/
++-- safield_demo/                # optional experimental shape-aware demo
+    +-- best_scc_model.pth
+    +-- config.yaml
 ```
 
 Validate the asset layout with:
 
 ```bash
 python tools/check_assets.py --mode all
+```
+
+After extracting the released data packages, also run:
+
+```bash
+python tools/check_assets.py --mode all --check-data
 ```
 
 For pose-only workflows, use:

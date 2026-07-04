@@ -85,22 +85,22 @@ EXACT_FCL_ASSETS = (
 
 DATA_ASSETS = (
     AssetSpec(
-        "Pose training split list",
+        "HwC pose training split list",
         (Path("data/dataset/train_list.csv"),),
-        "pose training",
+        "HwC pose training",
     ),
     AssetSpec(
-        "Pose test split list",
+        "HwC pose test split list",
         (Path("data/dataset/test_list.csv"),),
-        "pose evaluation",
+        "HwC pose evaluation",
     ),
     AssetSpec(
-        "Pose benchmark dataset",
+        "HwC pose benchmark dataset",
         (Path("data/dataset_test"),),
-        "pose benchmark evaluation",
+        "pose collision-resolution benchmark evaluation",
     ),
     AssetSpec(
-        "Canonical motion subset",
+        "Canonical MotionFix motion subset",
         (Path("data/motion_canonical"),),
         "motion evaluation",
     ),
@@ -127,7 +127,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--check-data",
         action="store_true",
-        help="Also check released training/evaluation data directories.",
+        help="Also check released HwC pose data and canonical motion data directories.",
     )
     return parser.parse_args()
 
