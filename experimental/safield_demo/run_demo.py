@@ -7,8 +7,8 @@ to resolve the collision.
 Features:
 - Loads a pre-trained SAFieldNetwork checkpoint.
 - Runs SLSQP optimization for a colliding pose under two distinct shape conditions.
-- Outputs the field values, distance of optimized poses, and MVD (Mean Vertex Displacement) between them.
-- (Optional) Runs SMPL+H forward pass to export resolved meshes as `.obj` files.
+- Outputs the field values and distance between optimized poses.
+- Optionally exports input and resolved SMPL-H meshes as OBJ files.
 """
 import os
 import json
@@ -107,7 +107,7 @@ def sixd_to_mesh(model, r_6d, device=torch.device('cpu'), betas=None):
 
 def save_obj(vertices, faces, path):
     """Save vertices and faces as a wavefront OBJ file."""
-    with open(path, "w") as f:
+    with open(path, "w", encoding="utf-8") as f:
         for v in vertices:
             f.write(f"v {v[0]:.6f} {v[1]:.6f} {v[2]:.6f}\n")
         for face in faces:
@@ -135,7 +135,11 @@ def main():
     )
     parser.add_argument(
         "--smpl_model_path", type=str, default="",
-        help="Path to the SMPL+H body model folder (e.g. containing 'smplh' folder) for OBJ exporting"
+        help="Path to the SMPL+H body model folder (e.g. containing 'smplh' folder) for OBJ export"
+    )
+    parser.add_argument(
+        "--output_dir", type=str, default=str(DEMO_DIR / "output"),
+        help="Directory for exported OBJ files when --smpl_model_path is provided"
     )
     parser.add_argument("--threshold", type=float, default=None, help="Override the configured field threshold")
     parser.add_argument("--max_itr", type=int, default=None, help="Override the configured SLSQP iteration count")
@@ -246,28 +250,31 @@ def main():
             use_pca=False
         ).to(device)
 
-        # Reconstruct meshes
-        # Note: we can reconstruct them on the SAME body shape to measure the PURE pose-induced vertex displacement
-        verts_a_same, faces = sixd_to_mesh(smpl_model, opt_theta_a.reshape(21, 6), device=device, betas=b_a_t)
-        verts_b_same, _ = sixd_to_mesh(smpl_model, opt_theta_b.reshape(21, 6), device=device, betas=b_a_t)
-        pure_pose_mvd = np.mean(np.linalg.norm(verts_a_same - verts_b_same, axis=-1))
+        output_dir = Path(args.output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Reconstruct them on their OWN respective shapes
-        verts_a_own, _ = sixd_to_mesh(smpl_model, opt_theta_a.reshape(21, 6), device=device, betas=b_a_t)
-        verts_b_own, _ = sixd_to_mesh(smpl_model, opt_theta_b.reshape(21, 6), device=device, betas=b_b_t)
+        # Reconstruct input and resolved meshes for both body shapes.
+        verts_a_input, faces = sixd_to_mesh(smpl_model, pose_init.reshape(21, 6), device=device, betas=b_a_t)
+        verts_b_input, _ = sixd_to_mesh(smpl_model, pose_init.reshape(21, 6), device=device, betas=b_b_t)
+        verts_a_resolved, _ = sixd_to_mesh(smpl_model, opt_theta_a.reshape(21, 6), device=device, betas=b_a_t)
+        verts_b_resolved, _ = sixd_to_mesh(smpl_model, opt_theta_b.reshape(21, 6), device=device, betas=b_b_t)
+        verts_b_same, _ = sixd_to_mesh(smpl_model, opt_theta_b.reshape(21, 6), device=device, betas=b_a_t)
+        pure_pose_mvd = np.mean(np.linalg.norm(verts_a_resolved - verts_b_same, axis=-1))
 
         print(f"Mean Vertex Displacement (MVD) purely from pose change: {pure_pose_mvd * 100:.2f} cm")
 
-        # Export meshes
-        out_a_path = f"resolved_pose_idx{args.example_idx}_shape_a.obj"
-        out_b_path = f"resolved_pose_idx{args.example_idx}_shape_b.obj"
-        save_obj(verts_a_own, faces, out_a_path)
-        save_obj(verts_b_own, faces, out_b_path)
-        print(f"Exported OBJ: {out_a_path}")
-        print(f"Exported OBJ: {out_b_path}")
-        print("You can open these OBJ files in Blender or MeshLab to visualize the shape-conditioned collision resolution!")
+        obj_paths = {
+            "shape_a_input.obj": verts_a_input,
+            "shape_a_resolved.obj": verts_a_resolved,
+            "shape_b_input.obj": verts_b_input,
+            "shape_b_resolved.obj": verts_b_resolved,
+        }
+        for filename, vertices in obj_paths.items():
+            output_path = output_dir / filename
+            save_obj(vertices, faces, output_path)
+            print(f"Exported OBJ: {output_path}")
     else:
-        print("\nNote: Provide --smpl_model_path to export optimized meshes as OBJ files.")
+        print("\nNote: provide --smpl_model_path to export input and resolved OBJ files.")
 
 if __name__ == "__main__":
     main()

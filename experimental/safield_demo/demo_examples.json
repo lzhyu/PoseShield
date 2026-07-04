@@ -408,44 +408,7 @@
       0.0978805348277092,
       0.9841504096984863,
       0.1478787362575531
-    ],
-    "metadata": {
-      "note": "Selected by Qwen3-VL shape-conditioned search with manual visual audit; beta_thin/fat are demo shape A/B labels.",
-      "selection": "stronger_shape_exact_fcl_verified",
-      "selection_reason": "A/B shapes were strengthened within [-2, 2] and re-optimized; exact FCL verifies both initial meshes collide and both resolved meshes are collision-free.",
-      "source_run": "experimental/safield_demo/artifacts/release_example",
-      "render_path": "assets/safield_experimental_shape_demo_blender.png",
-      "rank_score": 16.743932338058947,
-      "vlm_score": 5.0,
-      "g_init_a": -0.09639745950698853,
-      "g_init_b": -0.1857193410396576,
-      "g_opt_a": 0.049946676939725876,
-      "g_opt_b": 0.048572152853012085,
-      "mvd_a": 0.03190917149186134,
-      "mvd_b": 0.04856513440608978,
-      "pure_pose_mvd": 0.028076402842998505,
-      "move_l2_a": 0.3264159560203552,
-      "move_l2_b": 0.3442601263523102,
-      "pose_l2": 0.3660067021846771,
-      "dataset_idx": 93,
-      "pair_idx": 4,
-      "fcl_report_path": "experimental/safield_demo/artifacts/release_example/selected_fcl_report.json",
-      "shape_comparison_path": "assets/safield_experimental_shape_demo_blender.png",
-      "fcl_topology_threshold": 40,
-      "fcl_shape_a_initial_collision": true,
-      "fcl_shape_a_resolved_collision": false,
-      "fcl_shape_b_initial_collision": true,
-      "fcl_shape_b_resolved_collision": false,
-      "strong_shape_name": "height_width_contrast",
-      "strong_shape_render_path": "assets/safield_experimental_shape_demo_blender.png",
-      "strong_shape_score": 12.508822217583656,
-      "shape_mvd_initial": 0.10120829939842224,
-      "shape_mvd_resolved": 0.11316735297441483,
-      "strong_shape_focused_render_path": "assets/safield_experimental_shape_demo_blender.png",
-      "resolved_overlay_combined_obj_path": null,
-      "resolved_overlay_combined_mtl_path": null,
-      "resolved_overlay_objspace_render_path": null
-    }
+    ]
   },
   {
     "idx": 63,
@@ -856,19 +819,7 @@
       -0.2978019416332245,
       0.9288229942321777,
       0.0957091897726059
-    ],
-    "metadata": {
-      "note": "Selected by Qwen3-VL shape-conditioned search; beta_thin/fat are demo shape A/B labels.",
-      "rank_score": 19.463558883070945,
-      "vlm_score": 5.0,
-      "g_init_a": -0.33074578642845154,
-      "g_init_b": -0.3144906461238861,
-      "g_opt_a": 0.04987841844558716,
-      "g_opt_b": 0.04987303912639618,
-      "mvd_a": 0.0732443779706955,
-      "mvd_b": 0.07703600823879242,
-      "pure_pose_mvd": 0.1223907619714737
-    }
+    ]
   },
   {
     "idx": 4,

@@ -37,7 +37,7 @@ them.
 - [x] Quick pose and motion demos with released checkpoints.
 - [x] Humans with Collisions (HwC) data for training, evaluation, and the 500-pose benchmark.
 - [x] Exact-FCL validation plus HTML and optional Blender visualization.
-- [x] Experimental shape-aware SAField demo beyond the main paper setting.
+- [x] Experimental shape-aware SAField demo that resolves a fixed sample and exports OBJ meshes.
 - [ ] Evaluation on self-colliding human motion sequences.
 
 ## Overview
@@ -401,19 +401,14 @@ Checkpoints and logs are saved to `experiments/<EXP_NAME>/`.
 
 ## Experimental: Shape-Aware Collision Field
 
-We also include an exploratory standalone SAField demo that conditions the
-collision field on SMPL body-shape coefficients. Starting from the same
-colliding pose, the demo resolves the pose differently for two body shapes while
-keeping both outputs collision-free under exact FCL validation.
-
-<p align="center">
-  <img src="assets/safield_experimental_shape_demo_blender.png" alt="Experimental SAField shape-aware collision resolution" width="90%">
-</p>
+We also include a minimal standalone SAField demo that conditions the collision
+field on SMPL body-shape coefficients. Starting from a fixed colliding pose, the
+demo loads the released experimental checkpoint, resolves the pose for two body
+shapes, and can export the input and resolved meshes as OBJ files.
 
 This component is provided as an experimental extension rather than the primary
-PoseShield release path. See `experimental/safield_demo/` for the standalone
-model, fixed release example, exact-FCL validation report, Blender-compatible
-OBJ assets, and commands to reproduce the figure above.
+PoseShield release path. See `experimental/safield_demo/` for the model config,
+fixed sample, and command to reproduce the OBJ outputs.
 
 ## Citation
 

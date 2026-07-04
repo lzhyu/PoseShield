@@ -15,5 +15,3 @@ optimization:
 example:
   examples_path: demo_examples.json
   example_idx: 0
-validation:
-  topology_threshold: 40
