@@ -33,12 +33,6 @@ def get_args():
     parser.add_argument("--use_adjoint", action="store_true", help="Use adjoint method for ODE backpropagation")
     parser.add_argument("--no_use_adjoint", action="store_false", dest="use_adjoint", help="Use standard direct backpropagation (faster)")
     parser.set_defaults(use_adjoint=False)
-    parser.add_argument(
-        "--s1_early_stop_err",
-        type=float,
-        default=0.0,
-        help="Deprecated compatibility option; Stage 1 does not early-stop.",
-    )
     parser.add_argument("--s1_phase1_steps", type=int, default=0, help="Number of steps in Phase 1 (pure rot + trans loss, no SMPL FK). Default 0 (phased optimization disabled)")
 
     # Stage 1 similarity coefficients

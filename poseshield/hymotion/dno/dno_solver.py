@@ -60,7 +60,6 @@ class DNOSolver:
         self.best_step = -1
         self.best_col = math.inf
         self.best_score = math.inf
-        self.early_stopped = False
 
         # Lowest-collision fallback when no checkpoint reaches the strict threshold.
         self.fallback_z = None
@@ -158,18 +157,6 @@ class DNOSolver:
                     loss = crit_out
                     details = {}
                     
-                if details.get("stop_early", False):
-                    print(f"Early stopping triggered at step {self.step_count} because stop_early condition was met.")
-                    self.best_z = self.current_z.detach().clone()
-                    self.best_x = x.detach().clone()
-                    self.best_step = self.step_count
-                    self.best_col = float(details.get("col", math.inf))
-                    self.best_score = float(
-                        details.get("checkpoint_score", loss.detach().mean().item())
-                    )
-                    self.early_stopped = True
-                    break
-                    
                 if loss.shape == (batch_size,):
                      loss_cls = loss.clone().detach().cpu()
                      loss = loss.sum()
@@ -238,16 +225,12 @@ class DNOSolver:
             out_x = self.best_x
             checkpoint_col = self.best_col if math.isfinite(self.best_col) else None
             checkpoint_score = self.best_score
-            if self.early_stopped:
-                print(f"Returning explicit early-stop checkpoint from step {self.best_step}.")
-                checkpoint_reason = "explicit_early_stop"
-            else:
-                print(
-                    "Returning lowest-fidelity feasible checkpoint from step "
-                    f"{self.best_step} (col={self.best_col:.9f} <= {self.col_threshold}, "
-                    f"score={self.best_score:.9f})"
-                )
-                checkpoint_reason = "lowest_fidelity_within_collision_threshold"
+            print(
+                "Returning lowest-fidelity feasible checkpoint from step "
+                f"{self.best_step} (col={self.best_col:.9f} <= {self.col_threshold}, "
+                f"score={self.best_score:.9f})"
+            )
+            checkpoint_reason = "lowest_fidelity_within_collision_threshold"
         elif self.fallback_z is not None:
             print(
                 f"No checkpoint reached col <= {self.col_threshold}; returning "
