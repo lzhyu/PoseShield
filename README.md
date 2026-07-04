@@ -419,10 +419,10 @@ OBJ assets, and commands to reproduce the figure above.
 If you find our work useful in your research, please consider citing:
 
 ```bibtex
-@inproceedings{li2026poseshield,
+@article{li2026poseshield,
   title={PoseShield: Neural Collision Fields for Human Self-Collision Resolution},
   author={Li, Zhengyuan and Deng, Zeyun and Shen, Yifan and Gui, Liangyan and Xie, Miaolan and Campbell, Joseph and Gao, Xifeng and Wu, Kui and Pan, Zherong and Bera, Aniket},
-  booktitle={European Conference on Computer Vision (ECCV)},
+  journal={arXiv preprint arXiv:2606.29686},
   year={2026}
 }
 ```
