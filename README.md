@@ -29,15 +29,8 @@
 **PoseShield** is a post-hoc self-collision resolver for SMPL-H poses and
 human motion sequences. It uses a learned neural collision field as a
 differentiable constraint, so existing poses and motions can be repaired as a
-post-processing step without retraining, modifying, or even knowing the upstream
-system that produced them.
-
-PoseShield provides:
-
-- pose-level self-collision detection and correction for SMPL-H;
-- motion-level collision resolution with a two-stage latent optimization pipeline;
-- exact mesh/FCL validation utilities;
-- browser-based motion visualization and optional Blender rendering.
+post-processing step without even knowing the upstream system that produced
+them.
 
 ## Release Status
 
@@ -78,14 +71,13 @@ At inference time, PoseShield uses this learned field in two ways:
 
 ## Limitations
 
-The released PoseShield models and datasets assume the neutral SMPL-H body model
-with `betas=None`; subject-specific body-shape parameters are not passed to the
-SMPL-H layer. Body-shape variation is not optimized or modeled in this release.
-To apply the method to other SMPL body shapes, character-specific SMPL humans,
-Momentum Human Rig, or other human parametric models, users may need to build a
-custom collision dataset for the target body model and retrain the collision
-field. As a preliminary step toward addressing this limitation, we provide an
-experimental shape-aware collision-field feature at the end of this README.
+The main method studied in the paper assumes the neutral SMPL-H body model with
+`betas=None`; subject-specific body-shape parameters are not passed to the
+SMPL-H layer. To apply the method to other SMPL body shapes, character-specific
+SMPL humans, Momentum Human Rig, or other human parametric models, users may
+need to build a custom collision dataset for the target body model and retrain
+the collision field. In this release, we include a preliminary experimental
+shape-aware collision-field feature as an initial step beyond the paper setting.
 
 ## Getting Started
 
