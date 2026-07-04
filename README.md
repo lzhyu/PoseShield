@@ -199,20 +199,11 @@ experimental/
 Validate the asset layout with:
 
 ```bash
-python tools/check_assets.py --mode all
+python tools/check_assets.py
 ```
 
-After extracting the released data packages, also run:
-
-```bash
-python tools/check_assets.py --mode all --check-data
-```
-
-For pose-only workflows, use:
-
-```bash
-python tools/check_assets.py --mode pose
-```
+The script prints present and missing asset groups, and exits with a non-zero
+status if any required asset is missing.
 
 The repository includes small ready-to-run motion demos in `demo_asset/`. The full released canonical motion subset is distributed separately through the project release assets.
 

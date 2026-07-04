@@ -19,6 +19,7 @@ class AssetSpec:
     label: str
     paths: tuple[Path, ...]
     workflow: str
+    required: bool = True
 
 
 SHARED_ASSETS = (
@@ -95,14 +96,50 @@ DATA_ASSETS = (
         "HwC pose evaluation",
     ),
     AssetSpec(
-        "HwC pose benchmark dataset",
-        (Path("data/dataset_test"),),
+        "HwC augmented pose files",
+        (Path("data/dataset/augmented_data/*.npz"),),
+        "HwC pose training",
+    ),
+    AssetSpec(
+        "HwC ground-truth pose files",
+        (Path("data/dataset/gt_data/*.npz"),),
+        "HwC pose training and evaluation",
+    ),
+    AssetSpec(
+        "HwC benchmark metadata",
+        (Path("data/dataset_test/*.pkl"),),
         "pose collision-resolution benchmark evaluation",
     ),
     AssetSpec(
-        "Canonical MotionFix motion subset",
-        (Path("data/motion_canonical"),),
+        "HwC benchmark mesh files",
+        (Path("data/dataset_test/*.obj"),),
+        "pose collision-resolution benchmark evaluation",
+    ),
+    AssetSpec(
+        "HwC benchmark preview images",
+        (Path("data/dataset_test/*.png"),),
+        "pose collision-resolution benchmark evaluation",
+    ),
+    AssetSpec(
+        "Canonical MotionFix motion files",
+        (Path("data/motion_canonical/motionfix_*_135.npy"),),
         "motion evaluation",
+    ),
+)
+
+
+OPTIONAL_ASSETS = (
+    AssetSpec(
+        "Experimental SAField checkpoint",
+        (Path("experimental/safield_demo/best_scc_model.pth"),),
+        "optional shape-aware demo",
+        required=False,
+    ),
+    AssetSpec(
+        "Experimental SAField config",
+        (Path("experimental/safield_demo/config.yaml"),),
+        "optional shape-aware demo",
+        required=False,
     ),
 )
 
@@ -110,7 +147,7 @@ DATA_ASSETS = (
 def parse_args() -> argparse.Namespace:
     """Parse command-line arguments and return the namespace."""
     parser = argparse.ArgumentParser(
-        description="Check required PoseShield checkpoints, body models, and data assets."
+        description="Check PoseShield checkpoints, body models, and data assets."
     )
     parser.add_argument(
         "--root",
@@ -118,30 +155,18 @@ def parse_args() -> argparse.Namespace:
         default=PROJECT_ROOT,
         help="PoseShield repository root. Defaults to this script's parent repo.",
     )
-    parser.add_argument(
-        "--mode",
-        choices=("pose", "motion", "all"),
-        default="all",
-        help="Asset group to validate. 'motion' includes pose-level shared assets.",
-    )
-    parser.add_argument(
-        "--check-data",
-        action="store_true",
-        help="Also check released HwC pose data and canonical motion data directories.",
-    )
     return parser.parse_args()
 
 
-def select_assets(mode: str, check_data: bool) -> list[AssetSpec]:
-    """Return the asset checks required for the selected workflow."""
-    assets = list(SHARED_ASSETS)
-    if mode in {"pose", "motion", "all"}:
-        assets.extend(EXACT_FCL_ASSETS)
-    if mode in {"motion", "all"}:
-        assets.extend(MOTION_ASSETS)
-    if check_data:
-        assets.extend(DATA_ASSETS)
-    return assets
+def select_assets() -> list[AssetSpec]:
+    """Return the default full-release asset checklist."""
+    return [
+        *SHARED_ASSETS,
+        *EXACT_FCL_ASSETS,
+        *MOTION_ASSETS,
+        *DATA_ASSETS,
+        *OPTIONAL_ASSETS,
+    ]
 
 
 def format_size(path: Path) -> str:
@@ -156,17 +181,45 @@ def format_size(path: Path) -> str:
     return f"{size:.1f} GB"
 
 
+def has_glob_pattern(path: Path) -> bool:
+    """Return whether a relative path contains glob wildcard syntax."""
+    return any(char in str(path) for char in "*?[")
+
+
+def find_existing_paths(root: Path, spec: AssetSpec) -> list[Path]:
+    """Return existing paths matching an asset spec."""
+    existing: list[Path] = []
+    for rel_path in spec.paths:
+        if has_glob_pattern(rel_path):
+            existing.extend(sorted(root.glob(str(rel_path))))
+        else:
+            path = root / rel_path
+            if path.exists():
+                existing.append(path)
+    return existing
+
+
 def check_asset(root: Path, spec: AssetSpec) -> tuple[bool, str]:
     """Validate one asset and return a status flag plus printable message."""
-    candidates = [root / path for path in spec.paths]
-    existing = [path for path in candidates if path.exists()]
+    existing = find_existing_paths(root, spec)
     if not existing:
-        expected = " or ".join(str(path.relative_to(root)) for path in candidates)
+        expected = " or ".join(str(path) for path in spec.paths)
         return False, f"MISSING {spec.label}: expected {expected} ({spec.workflow})"
     path = existing[0]
     if path.is_file() and path.stat().st_size == 0:
         return False, f"EMPTY {spec.label}: {path.relative_to(root)} ({spec.workflow})"
-    return True, f"OK {spec.label}: {path.relative_to(root)} [{format_size(path)}]"
+    suffix = f"{len(existing)} match(es)" if len(existing) > 1 else format_size(path)
+    return True, f"{spec.label}: {path.relative_to(root)} [{suffix}]"
+
+
+def print_group(title: str, messages: list[str]) -> None:
+    """Print a named group of asset check messages."""
+    print(f"\n{title}")
+    if not messages:
+        print("  - None")
+        return
+    for message in messages:
+        print(f"  - {message}")
 
 
 def main() -> int:
@@ -177,17 +230,29 @@ def main() -> int:
         print(f"ERROR repository root does not exist: {root}", file=sys.stderr)
         return 2
 
-    failures = []
-    for spec in select_assets(args.mode, args.check_data):
-        ok, message = check_asset(root, spec)
-        print(message)
-        if not ok:
-            failures.append(message)
+    present: list[str] = []
+    missing_required: list[str] = []
+    missing_optional: list[str] = []
 
-    if failures:
-        print(f"\nFAILED {len(failures)} asset check(s).")
+    print(f"PoseShield asset check\nRoot: {root}")
+    for spec in select_assets():
+        ok, message = check_asset(root, spec)
+        if ok:
+            present.append(message)
+        elif spec.required:
+            missing_required.append(message)
+        else:
+            missing_optional.append(message)
+
+    print_group("Present", present)
+    print_group("Missing required", missing_required)
+    print_group("Missing optional", missing_optional)
+
+    if missing_required:
+        print(f"\nFAILED: {len(missing_required)} required asset group(s) missing.")
         return 1
-    print("\nAll requested PoseShield asset checks passed.")
+
+    print("\nAll required PoseShield assets are present.")
     return 0
 
 
