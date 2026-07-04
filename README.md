@@ -114,7 +114,7 @@ Download and extract the PoseShield external assets at the repository root:
 unzip PoseShield_release_dependencies_20260628.zip -d .
 unzip PoseShield_release_pose_data_20260628.zip -d .
 unzip PoseShield_release_motion_data_20260628.zip -d .
-unzip PoseShield_release_safield_demo_20260703.zip -d .  # optional experimental SAField demo
+unzip -o PoseShield_release_safield_demo_20260703.zip -d .  # optional experimental SAField demo
 ```
 
 The release asset packages are available from the
