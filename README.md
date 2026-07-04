@@ -32,12 +32,12 @@ differentiable constraint, so existing poses and motions can be repaired as a
 post-processing step without even knowing the upstream system that produced
 them.
 
-## Release Status
+## What Is Included
 
-- [x] Pose-level self-collision detection, correction, training, and evaluation.
-- [x] Motion-level collision resolution demos with released checkpoints.
-- [x] Exact-FCL validation plus HTML and optional Blender visualization tools.
-- [x] Experimental shape-aware SAField demo for SMPL body-shape variation.
+- [x] Quick pose and motion demos with released checkpoints.
+- [x] Humans with Collisions (HwC) data for training, evaluation, and the 500-pose benchmark.
+- [x] Exact-FCL validation plus HTML and optional Blender visualization.
+- [x] Experimental shape-aware SAField demo beyond the main paper setting.
 
 ## Overview
 
