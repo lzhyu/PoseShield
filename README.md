@@ -202,9 +202,9 @@ a non-zero status if any required asset is missing.
 
 </details>
 
-The repository includes small ready-to-run motion demos in `demo_asset/`.
-
 ## Demo
+
+Small demo inputs are provided in `demo_asset/`.
 
 ### Pose Collision Resolution
 
@@ -356,11 +356,6 @@ optimized motion.
 </details>
 
 ## Evaluation
-
-The following pose-level evaluation commands require the released pose benchmark
-split and the dependency package described above. The small files under
-`demo_asset/` are intended for quick demos, not for reproducing the full
-benchmark tables.
 
 ### Collision Detection Accuracy
 
