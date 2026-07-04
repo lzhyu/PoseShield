@@ -269,6 +269,42 @@ The optimized motion copies the original absolute translation trajectory and upd
 </details>
 
 <details>
+<summary><b>Motion Data Format</b></summary>
+
+<br>
+
+PoseShield uses different public representations for pose-level and
+motion-level code:
+
+- Pose-level detection, training, and optimization operate on a single SMPL-H
+  body pose represented as 21 joints × 6D rotations, i.e. shape `[21, 6]` or a
+  flattened 126D vector.
+- Motion-level inference, evaluation, and visualization operate on a canonical
+  HY-Motion-compatible motion array:
+
+```text
+shape: [frames, 135]
+
+[0:132]   22 joints × 6D rotations, HY-Motion column-interleaved layout
+[132:135] absolute global translation [abs_x, abs_y, abs_z]
+```
+
+Coordinate convention:
+
+```text
+Y-up
+X = right
+Y = height/up
+Z = forward
+frame 0 human facing +Z
+```
+
+The optimized motion keeps the original absolute translation trajectory and
+updates the pose rotations.
+
+</details>
+
+<details>
 <summary><b>Exact Mesh/FCL Collision Check</b></summary>
 
 <br>
@@ -326,42 +362,6 @@ python tools/render_motion_blender.py \
 Blender/MP4 rendering is optional and is not required for PoseShield evaluation.
 The default render colors are red for the original motion and green for the
 optimized motion.
-
-</details>
-
-<details>
-<summary><b>Motion Data Format</b></summary>
-
-<br>
-
-PoseShield uses different public representations for pose-level and
-motion-level code:
-
-- Pose-level detection, training, and optimization operate on a single SMPL-H
-  body pose represented as 21 joints × 6D rotations, i.e. shape `[21, 6]` or a
-  flattened 126D vector.
-- Motion-level inference, evaluation, and visualization operate on a canonical
-  HY-Motion-compatible motion array:
-
-```text
-shape: [frames, 135]
-
-[0:132]   22 joints × 6D rotations, HY-Motion column-interleaved layout
-[132:135] absolute global translation [abs_x, abs_y, abs_z]
-```
-
-Coordinate convention:
-
-```text
-Y-up
-X = right
-Y = height/up
-Z = forward
-frame 0 human facing +Z
-```
-
-The optimized motion keeps the original absolute translation trajectory and
-updates the pose rotations.
 
 </details>
 
