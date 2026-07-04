@@ -34,5 +34,3 @@ python experimental/safield_demo/run_demo.py \
   --smpl_model_path deps/body_models \
   --output_dir experimental/safield_demo/output/example_0
 ```
-
-The OBJ files are written to `--output_dir`, which is ignored by Git.
