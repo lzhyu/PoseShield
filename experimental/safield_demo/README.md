@@ -35,13 +35,4 @@ python experimental/safield_demo/run_demo.py \
   --output_dir experimental/safield_demo/output/example_0
 ```
 
-The OBJ export writes:
-
-```text
-experimental/safield_demo/output/example_0/shape_a_input.obj
-experimental/safield_demo/output/example_0/shape_a_resolved.obj
-experimental/safield_demo/output/example_0/shape_b_input.obj
-experimental/safield_demo/output/example_0/shape_b_resolved.obj
-```
-
-The output directory is ignored by Git.
+The OBJ files are written to `--output_dir`, which is ignored by Git.
