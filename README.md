@@ -195,8 +195,8 @@ ckpts/
             +-- Std.npy
 experimental/
 +-- safield_demo/                # optional experimental shape-aware demo
-    +-- best_scc_model.pth
-    +-- config.yaml
+    +-- sa_model.pth
+    +-- sa_config.yaml
 ```
 
 `tools/check_assets.py` prints present and missing asset groups, and exits with

@@ -16,7 +16,7 @@ Run the selected shape-aware optimization example:
 
 ```bash
 python experimental/safield_demo/run_demo.py \
-  --config_path experimental/safield_demo/config.yaml \
+  --config_path experimental/safield_demo/sa_config.yaml \
   --examples_path experimental/safield_demo/demo_examples.json \
   --example_idx 0
 ```
@@ -28,7 +28,7 @@ To also export OBJ meshes:
 
 ```bash
 python experimental/safield_demo/run_demo.py \
-  --config_path experimental/safield_demo/config.yaml \
+  --config_path experimental/safield_demo/sa_config.yaml \
   --examples_path experimental/safield_demo/demo_examples.json \
   --example_idx 0 \
   --smpl_model_path deps/body_models \

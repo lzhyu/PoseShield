@@ -23,11 +23,16 @@ from inference import optimize_pose
 
 
 DEMO_DIR = Path(__file__).resolve().parent
-DEFAULT_CONFIG_PATH = DEMO_DIR / "config.yaml"
+DEFAULT_CONFIG_PATH = DEMO_DIR / "sa_config.yaml"
 
 
 def load_config(path: Path) -> dict:
     """Load the SAField demo configuration."""
+    if not path.is_file():
+        raise FileNotFoundError(
+            f"SAField config not found: {path}. "
+            "Download and extract the SAField demo asset package first."
+        )
     with path.open("r", encoding="utf-8") as handle:
         config = yaml.safe_load(handle)
     if not isinstance(config, dict):
@@ -48,7 +53,7 @@ def resolve_config_path(config_path: str) -> Path:
 def checkpoint_from_config(config: dict, config_path: Path) -> Path:
     """Return the checkpoint path declared by the config."""
     checkpoint = config.get("checkpoint", {})
-    filename = checkpoint.get("filename", "best_scc_model.pth")
+    filename = checkpoint.get("filename", "sa_model.pth")
     path = Path(filename)
     if path.is_absolute():
         return path

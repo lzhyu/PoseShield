@@ -140,5 +140,6 @@ demos/output/
 demos/output_test/
 demos/output_motion*/
 poseshield/output/
-experimental/safield_demo/best_scc_model.pth
+experimental/safield_demo/sa_config.yaml
+experimental/safield_demo/sa_model.pth
 experimental/safield_demo/output/

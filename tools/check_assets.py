@@ -131,13 +131,13 @@ DATA_ASSETS = (
 OPTIONAL_ASSETS = (
     AssetSpec(
         "Experimental SAField checkpoint",
-        (Path("experimental/safield_demo/best_scc_model.pth"),),
+        (Path("experimental/safield_demo/sa_model.pth"),),
         "optional shape-aware demo",
         required=False,
     ),
     AssetSpec(
         "Experimental SAField config",
-        (Path("experimental/safield_demo/config.yaml"),),
+        (Path("experimental/safield_demo/sa_config.yaml"),),
         "optional shape-aware demo",
         required=False,
     ),
