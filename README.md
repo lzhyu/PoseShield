@@ -119,29 +119,11 @@ unzip PoseShield_release_safield_demo_20260703.zip -d .  # optional experimental
 The release asset packages are available from the
 [PoseShield Google Drive folder](https://drive.google.com/drive/folders/1gLdFy4OTfYaKeaZ3olqShyh3kF2m5ogf?usp=sharing).
 
-For motion-level resolution, also download [HY-Motion-1.0-Lite](https://github.com/Tencent-Hunyuan/HY-Motion-1.0) and place it under:
-
-```text
-ckpts/tencent/HY-Motion-1.0-Lite/
-```
-
-This directory should contain the HY-Motion checkpoint, its config file, and normalization statistics:
-
-```text
-ckpts/tencent/HY-Motion-1.0-Lite/latest.ckpt
-ckpts/tencent/HY-Motion-1.0-Lite/config.yaml  # or config.yml
-ckpts/tencent/HY-Motion-1.0-Lite/stats/Mean.npy
-ckpts/tencent/HY-Motion-1.0-Lite/stats/Std.npy
-```
-
 Validate the asset layout with:
 
 ```bash
 python tools/check_assets.py
 ```
-
-The script prints present and missing asset groups, and exits with a non-zero
-status if any required asset is missing.
 
 <details>
 <summary><b>Release Asset Contents and Expected Layout</b></summary>
@@ -159,6 +141,11 @@ statistics, and the exact-FCL mesh distance table:
 | `config_elu.yaml` | `ckpts/poseshield/` | ELU collision field config |
 | `distances.pkl` | `deps/` | Mesh topology distances for exact-FCL checks |
 | `Mean.npy`, `Std.npy` | `ckpts/tencent/HY-Motion-1.0-Lite/stats/` | HY-Motion normalization statistics |
+
+For motion-level resolution, also download
+[HY-Motion-1.0-Lite](https://github.com/Tencent-Hunyuan/HY-Motion-1.0).
+Its checkpoint and config are not included in the PoseShield asset zip and
+should be placed under `ckpts/tencent/HY-Motion-1.0-Lite/`.
 
 The pose data package provides the released **Humans with Collisions (HwC)**
 pose dataset. `data/dataset/` is used for collision-field training and
@@ -210,9 +197,12 @@ experimental/
     +-- config.yaml
 ```
 
+`tools/check_assets.py` prints present and missing asset groups, and exits with
+a non-zero status if any required asset is missing.
+
 </details>
 
-The repository includes small ready-to-run motion demos in `demo_asset/`. The full released canonical motion subset is distributed separately through the project release assets.
+The repository includes small ready-to-run motion demos in `demo_asset/`.
 
 ## Demo
 
