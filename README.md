@@ -176,9 +176,15 @@ data/
 |   +-- train_list.csv
 |   +-- test_list.csv
 |   +-- augmented_data/
+|   |   +-- *.npz
 |   +-- gt_data/
+|       +-- *.npz
 +-- dataset_test/                # HwC 500-pose collision-resolution benchmark
+|   +-- *.pkl
+|   +-- *.obj
+|   +-- *.png
 +-- motion_canonical/            # 100 canonical MotionFix motion sequences
+    +-- motionfix_*_135.npy
 ckpts/
 +-- poseshield/
 |   +-- config.yaml
