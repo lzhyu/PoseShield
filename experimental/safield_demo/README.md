@@ -5,42 +5,10 @@ Given a fixed colliding SMPL-H pose and two SMPL body-shape coefficient vectors,
 the demo loads the released checkpoint, resolves the pose for each shape, and
 optionally exports the input and resolved meshes as OBJ files.
 
-## Setup
+## Prerequisites
 
-Use the PoseShield release environment from the repository root:
-
-```bash
-conda env create -f environment.yml
-conda activate poseshield
-pip install -e .
-```
-
-Download and extract the optional SAField demo asset package from the same
-PoseShield Google Drive folder linked in `../../README.md`:
-
-```bash
-unzip PoseShield_release_safield_demo_20260703.zip -d .
-```
-
-This package installs:
-
-```text
-experimental/safield_demo/best_scc_model.pth
-experimental/safield_demo/config.yaml
-```
-
-Expected SHA256 for `PoseShield_release_safield_demo_20260703.zip`:
-
-```text
-3115616ae89785ef3dd2343a56689672d0fd27810c796f7545f3c4f78bf3997b
-```
-
-For OBJ export, install the SMPL-H body model in the layout described by
-`../../README.md`:
-
-```text
-deps/body_models/smplh/SMPLH_NEUTRAL.npz
-```
+Follow the main `README.md` first: create the PoseShield environment, install
+the SMPL-H body model, and extract the optional SAField demo asset package.
 
 ## Run The Demo
 
