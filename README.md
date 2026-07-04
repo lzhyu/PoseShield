@@ -38,6 +38,7 @@ them.
 - [x] Humans with Collisions (HwC) data for training, evaluation, and the 500-pose benchmark.
 - [x] Exact-FCL validation plus HTML and optional Blender visualization.
 - [x] Experimental shape-aware SAField demo beyond the main paper setting.
+- [ ] Evaluation on self-colliding human motion sequences.
 
 ## Overview
 
@@ -357,14 +358,6 @@ optimized motion.
 
 ## Evaluation
 
-### Collision Detection Accuracy
-
-```bash
-python poseshield/pose/evaluate.py \
-    --config-path ckpts/poseshield/config.yaml \
-    --model-path ckpts/poseshield/model.pth
-```
-
 ### Pose-Level Collision Resolution Benchmark
 
 ```bash
@@ -387,6 +380,14 @@ Pose-level SLSQP logs report three separate statuses:
   exact-FCL validation.
 
 The default SLSQP iteration budget is `--max-itr 300`.
+
+### Collision Detection Accuracy
+
+```bash
+python poseshield/pose/evaluate.py \
+    --config-path ckpts/poseshield/config.yaml \
+    --model-path ckpts/poseshield/model.pth
+```
 
 ## Training
 
