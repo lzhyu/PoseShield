@@ -14,6 +14,7 @@ import numpy as np
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
+from poseshield.common.collision import DEFAULT_MOTION_TOPOLOGY_THRESHOLD
 from poseshield.hymotion.utils.motion_format import load_motion
 
 
@@ -24,6 +25,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output-dir", type=Path, required=True, help="Directory for JSON and plot outputs")
     parser.add_argument("--distances", type=Path, default=PROJECT_ROOT / "deps/distances.pkl")
     parser.add_argument("--device", default=None, help="Torch device; defaults to CUDA when available")
+    parser.add_argument(
+        "--topology-threshold",
+        type=int,
+        default=DEFAULT_MOTION_TOPOLOGY_THRESHOLD,
+        help="Topological face-distance threshold for motion exact-FCL checks.",
+    )
     return parser.parse_args()
 
 
@@ -35,7 +42,11 @@ def main() -> None:
     distance_path = args.distances.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    motion = load_motion(motion_path)
+    motion = load_motion(
+        motion_path,
+        translation_layout="xyz",
+        rotation_joint_layout="root_first",
+    )
     if not distance_path.is_file():
         raise FileNotFoundError(distance_path)
 
@@ -89,6 +100,7 @@ def main() -> None:
             frame_vertices,
             faces,
             distances,
+            topology_threshold=args.topology_threshold,
         )
         collision_flags.append(bool(has_collision))
         penetration_depths.append(float(penetration_depth))
@@ -102,6 +114,7 @@ def main() -> None:
         "num_collision_frames": len(collision_frames),
         "collision_frame_ratio": len(collision_frames) / motion.shape[0],
         "collision_frame_indices": collision_frames,
+        "topology_threshold": int(args.topology_threshold),
         "mean_penetration_depth": float(penetration_array.mean()),
         "max_penetration_depth": float(penetration_array.max()),
         "total_penetration_depth": float(penetration_array.sum()),

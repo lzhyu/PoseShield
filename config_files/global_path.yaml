@@ -1,5 +1,6 @@
 MESH_DISTANCE_PATH: "deps/distances.pkl"
 TOPOLOGY_THRESHOLD: 50
+MOTION_TOPOLOGY_THRESHOLD: 40
 BODY_MODEL_PATH: "deps/body_models"
 DATA_PATH: "data/dataset/"
 DATASET_EVAL_PATH: "data/dataset_test/"

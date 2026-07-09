@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 from tqdm import tqdm
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Callable, Optional
 from torchdiffeq import odeint as odeint_direct
 from torchdiffeq import odeint_adjoint as odeint_adjoint
 
@@ -31,12 +31,14 @@ class DNOSolver:
         start_z,
         conf: DNOOptions,
         col_threshold: float = 1e-4,
+        checkpoint_callback: Optional[Callable[[int, torch.Tensor, torch.Tensor, dict], None]] = None,
     ):
         self.model_fn = model_fn
         self.criterion = criterion
         self.start_z = start_z.detach()
         self.conf = conf
         self.col_threshold = col_threshold
+        self.checkpoint_callback = checkpoint_callback
         
         self.current_z = self.start_z.clone().requires_grad_(True)
         self.optimizer = torch.optim.Adam([self.current_z], lr=conf.lr)
@@ -170,6 +172,8 @@ class DNOSolver:
                 col_val = details.get("col", None)
                 warmup_done = self.step_count >= self.conf.num_opt_steps // 2
                 checkpoint_score = details.get("checkpoint_score", loss.detach().item())
+                if self.checkpoint_callback is not None:
+                    self.checkpoint_callback(self.step_count, self.current_z, x, details)
                 self._consider_checkpoint(
                     x,
                     col_val,

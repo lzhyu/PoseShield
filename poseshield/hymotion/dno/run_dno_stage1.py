@@ -109,7 +109,11 @@ def main():
     model.eval()
 
     # ─── 2. Load Reference Motion ────────────────────────────────────────────
-    motion_np = load_motion(args.motion_file)
+    motion_np = load_motion(
+        args.motion_file,
+        translation_layout="xyz",
+        rotation_joint_layout="root_first",
+    )
     target_motion = torch.from_numpy(motion_np).float().to(device)
     seq_len = target_motion.shape[0]
     print(f"Reference motion loaded: {seq_len} frames (canonical absolute-XYZ)")

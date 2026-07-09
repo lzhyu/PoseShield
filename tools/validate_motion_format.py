@@ -13,7 +13,12 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from poseshield.hymotion.dno.dno_loss import rotation_6d_to_matrix_torch
-from poseshield.hymotion.utils.motion_format import load_motion
+from poseshield.hymotion.utils.motion_format import (
+    infer_rotation_joint_layout,
+    infer_translation_layout,
+    load_motion,
+    validate_motion_array,
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -21,6 +26,18 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Validate canonical PoseShield motion files")
     parser.add_argument("motions", type=Path, nargs="+", help="Motion .npy files")
     parser.add_argument("--facing-tol-deg", type=float, default=1.0)
+    parser.add_argument(
+        "--expected-translation-layout",
+        choices=["xyz", "xzy"],
+        default="xyz",
+        help="Expected raw translation layout before any loader conversion.",
+    )
+    parser.add_argument(
+        "--expected-rotation-joint-layout",
+        choices=["root_first", "root_last"],
+        default="root_first",
+        help="Expected raw 22-joint rotation-block order before any loader conversion.",
+    )
     return parser.parse_args()
 
 
@@ -42,6 +59,23 @@ def main() -> None:
     failures: list[str] = []
     for path in args.motions:
         try:
+            raw_motion = np.load(path)
+            validate_motion_array(raw_motion, name=str(path))
+            translation_layout = infer_translation_layout(raw_motion)
+            rotation_joint_layout = infer_rotation_joint_layout(
+                raw_motion,
+                translation_layout=translation_layout,
+            )
+            if translation_layout != args.expected_translation_layout:
+                raise ValueError(
+                    "raw translation layout is "
+                    f"{translation_layout}, expected {args.expected_translation_layout}"
+                )
+            if rotation_joint_layout != args.expected_rotation_joint_layout:
+                raise ValueError(
+                    "raw rotation joint layout is "
+                    f"{rotation_joint_layout}, expected {args.expected_rotation_joint_layout}"
+                )
             motion = load_motion(path)
             angle = facing_angle_deg(motion)
             if abs(angle) > args.facing_tol_deg:
@@ -49,7 +83,11 @@ def main() -> None:
             trans = motion[:, 132:135]
             if not np.isfinite(trans).all():
                 raise ValueError("translation contains non-finite values")
-            print(f"OK {path}: shape={motion.shape}, facing={angle:.3f} deg")
+            print(
+                f"OK {path}: shape={motion.shape}, "
+                f"layout={translation_layout}/{rotation_joint_layout}, "
+                f"facing={angle:.3f} deg"
+            )
         except Exception as error:
             failures.append(f"{path}: {error}")
             print(f"FAIL {path}: {error}")

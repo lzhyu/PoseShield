@@ -4,8 +4,10 @@ import argparse
 import json
 import os
 from pathlib import Path
+import subprocess
 import sys
 import time
+from typing import Optional
 
 # Insert workspace root and poseshield sub-directory to sys.path to allow absolute imports of poseshield and hymotion
 workspace_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -35,16 +37,94 @@ def get_args() -> argparse.Namespace:
         default=None,
         help="Optional collision-free ground-truth motion",
     )
-    parser.add_argument("--ode_steps", type=int, default=50, help="Number of Stage 2 ODE integration points")
+    parser.add_argument("--ode_steps", type=int, default=20, help="Number of Stage 2 ODE integration points")
     parser.add_argument("--save_fbx", action="store_true", help="Save an FBX visualization artifact")
     parser.add_argument(
         "--evaluate_penetration",
         action="store_true",
         help="Run the slower exact-mesh penetration-depth diagnostic",
     )
+    parser.add_argument(
+        "--save_checkpoint_motions_every",
+        type=int,
+        default=10,
+        help=(
+            "If positive, save public-format motion snapshots every N Stage 2 "
+            "steps for exact-FCL checkpoint selection. Default 10."
+        ),
+    )
+    parser.add_argument(
+        "--checkpoint_motion_dir",
+        type=str,
+        default=None,
+        help="Optional output directory for checkpoint motion snapshots.",
+    )
+    parser.add_argument(
+        "--exact_fcl_select_checkpoint",
+        dest="exact_fcl_select_checkpoint",
+        action="store_true",
+        default=True,
+        help=(
+            "After Stage 2, run exact-FCL on saved checkpoint motions and use "
+            "the exact-aware checkpoint as the final output. Requires "
+            "--save_checkpoint_motions_every > 0. Enabled by default."
+        ),
+    )
+    parser.add_argument(
+        "--no_exact_fcl_select_checkpoint",
+        dest="exact_fcl_select_checkpoint",
+        action="store_false",
+        help="Disable exact-FCL checkpoint selection and keep the proxy-selected Stage 2 output.",
+    )
+    parser.add_argument(
+        "--exact_fcl_selection_dir",
+        type=str,
+        default=None,
+        help="Directory for exact-FCL checkpoint-selection records.",
+    )
+    parser.add_argument(
+        "--exact_fcl_selection_distances",
+        type=str,
+        default="deps/distances.pkl",
+        help="Mesh topology distances used by exact-FCL checkpoint selection.",
+    )
+    parser.add_argument(
+        "--exact_fcl_selection_device",
+        type=str,
+        default="cpu",
+        help=(
+            "Device for exact-FCL checkpoint selection. Defaults to CPU to "
+            "avoid competing with the loaded Stage 2 model for GPU memory."
+        ),
+    )
+    parser.add_argument(
+        "--exact_fcl_selection_topology_threshold",
+        type=int,
+        default=None,
+        help="Topology threshold for exact-FCL checkpoint selection.",
+    )
+    parser.add_argument(
+        "--exact_fcl_selection_resume",
+        action="store_true",
+        help=(
+            "Reuse existing exact-FCL checkpoint result JSON files when present. "
+            "Default false forces recomputation to avoid stale cached results."
+        ),
+    )
+    parser.add_argument(
+        "--exact_fcl_selection_proxy_col_threshold",
+        type=float,
+        default=1e-3,
+        help=(
+            "If set, run exact-FCL checkpoint selection only on checkpoints "
+            "whose proxy collision loss is at or below this threshold. If no "
+            "checkpoint qualifies, the minimum-proxy-collision checkpoint is "
+            "evaluated as a fallback. Default 1e-3."
+        ),
+    )
 
     # Stage 2: similarity + collision
-    parser.add_argument("--s2_steps", type=int, default=150, help="Stage 2 optimization steps")
+    parser.add_argument("--s2_steps", type=int, default=100, help="Stage 2 optimization steps")
     parser.add_argument("--s2_lr", type=float, default=0.02, help="Stage 2 learning rate")
     parser.add_argument("--s2_lr_warmup_steps", type=int, default=50)
     parser.add_argument("--s2_lr_decay_steps", type=int, default=None)
@@ -81,7 +161,11 @@ def _load_inputs(args: argparse.Namespace, device: torch.device) -> tuple[np.nda
     if not stage1_path.is_file():
         raise FileNotFoundError(f"Stage 1 latent not found: {stage1_path}")
 
-    motion_np = load_motion(motion_path)
+    motion_np = load_motion(
+        motion_path,
+        translation_layout="xyz",
+        rotation_joint_layout="root_first",
+    )
 
     z_fitted = torch.load(stage1_path, map_location=device)
     if not torch.is_tensor(z_fitted):
@@ -117,7 +201,241 @@ def _latent_to_motion_135(
 
 def _load_ground_truth(path: str) -> np.ndarray:
     """Load a ground-truth motion in the public canonical format."""
-    return load_motion(path)
+    return load_motion(
+        path,
+        translation_layout="xyz",
+        rotation_joint_layout="root_first",
+    )
+
+
+def _load_checkpoint_metadata(metadata_path: Path) -> list[dict]:
+    """Load checkpoint metadata JSONL records."""
+    if not metadata_path.is_file():
+        raise FileNotFoundError(f"Checkpoint metadata not found: {metadata_path}")
+    records: list[dict] = []
+    with metadata_path.open("r", encoding="utf-8") as handle:
+        for line_number, line in enumerate(handle, start=1):
+            line = line.strip()
+            if not line:
+                continue
+            record = json.loads(line)
+            for key in ("step", "motion", "x", "z", "checkpoint_score"):
+                if key not in record:
+                    raise ValueError(
+                        f"Missing '{key}' in {metadata_path}:{line_number}"
+                    )
+            records.append(record)
+    if not records:
+        raise ValueError(f"No checkpoint records found in {metadata_path}")
+    return records
+
+
+def _run_exact_fcl_for_checkpoint(
+    *,
+    motion_path: Path,
+    output_dir: Path,
+    distances_path: Path,
+    device: str,
+    topology_threshold: int,
+    log_path: Path,
+    resume: bool = False,
+) -> dict:
+    """Run exact-FCL for one checkpoint motion and return parsed results."""
+    output_dir.mkdir(parents=True, exist_ok=True)
+    result_path = output_dir / "exact_fcl_results.json"
+    if resume and result_path.is_file():
+        with result_path.open("r", encoding="utf-8") as handle:
+            return {
+                "returncode": 0,
+                "log": str(log_path),
+                "result_path": str(result_path),
+                "results": json.load(handle),
+                "reused": True,
+            }
+
+    command = [
+        sys.executable,
+        "tools/evaluate_exact_fcl.py",
+        "--motion",
+        str(motion_path),
+        "--output-dir",
+        str(output_dir),
+        "--distances",
+        str(distances_path),
+        "--device",
+        device,
+        "--topology-threshold",
+        str(topology_threshold),
+    ]
+    run = subprocess.run(
+        command,
+        cwd=workspace_root,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        check=False,
+    )
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    with log_path.open("w", encoding="utf-8") as handle:
+        handle.write("$ " + " ".join(command) + "\n")
+        handle.write(run.stdout)
+
+    if not result_path.is_file():
+        raise RuntimeError(
+            f"Exact-FCL did not write {result_path}; see {log_path}"
+        )
+    with result_path.open("r", encoding="utf-8") as handle:
+        results = json.load(handle)
+    return {
+        "returncode": run.returncode,
+        "log": str(log_path),
+        "result_path": str(result_path),
+        "results": results,
+        "reused": False,
+    }
+
+
+def _select_checkpoint_by_exact_fcl(
+    *,
+    metadata_path: Path,
+    output_dir: Path,
+    distances_path: Path,
+    device: str,
+    topology_threshold: int,
+    resume: bool = False,
+    proxy_col_threshold: Optional[float] = None,
+) -> dict:
+    """Select the best saved checkpoint using exact-FCL validation."""
+    records = _load_checkpoint_metadata(metadata_path)
+    candidate_source = "all_checkpoints"
+    candidate_records = records
+    if proxy_col_threshold is not None:
+        def proxy_col(record: dict) -> float:
+            value = record.get("col")
+            return float(value) if value is not None else float("inf")
+
+        finite_proxy_records = [
+            record for record in records if proxy_col(record) < float("inf")
+        ]
+        if finite_proxy_records:
+            candidate_records = [
+                record
+                for record in records
+                if proxy_col(record) <= float(proxy_col_threshold)
+            ]
+            candidate_source = "proxy_collision_threshold"
+            if not candidate_records:
+                candidate_records = [
+                    min(
+                        finite_proxy_records,
+                        key=lambda item: (proxy_col(item), float(item.get("checkpoint_score", float("inf")))),
+                    )
+                ]
+                candidate_source = "minimum_proxy_collision_fallback"
+        else:
+            candidate_source = "all_checkpoints_no_proxy_col"
+            candidate_records = records
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    evaluated: list[dict] = []
+    for record in candidate_records:
+        step = int(record["step"])
+        step_name = f"step_{step:04d}"
+        exact = _run_exact_fcl_for_checkpoint(
+            motion_path=Path(record["motion"]).resolve(),
+            output_dir=output_dir / step_name,
+            distances_path=distances_path.resolve(),
+            device=device,
+            topology_threshold=topology_threshold,
+            log_path=output_dir / f"{step_name}.log",
+            resume=resume,
+        )
+        evaluated_record = {
+            **record,
+            "exact_fcl": {
+                "returncode": exact["returncode"],
+                "log": exact["log"],
+                "result_path": exact["result_path"],
+                "reused": exact["reused"],
+            },
+            "exact_fcl_results": exact["results"],
+        }
+        with (output_dir / f"{step_name}.record.json").open(
+            "w", encoding="utf-8"
+        ) as handle:
+            json.dump(evaluated_record, handle, indent=2)
+        evaluated.append(evaluated_record)
+
+    def checkpoint_score(record: dict) -> float:
+        value = record.get("checkpoint_score")
+        return float(value) if value is not None else float("inf")
+
+    def exact_mean(record: dict) -> float:
+        results = record["exact_fcl_results"]
+        return float(results.get("mean_penetration_depth", float("inf")))
+
+    def exact_frames(record: dict) -> int:
+        results = record["exact_fcl_results"]
+        return int(results.get("num_collision_frames", 10**9))
+
+    exact_free = [
+        record
+        for record in evaluated
+        if bool(record["exact_fcl_results"].get("exact_collision_free", False))
+    ]
+    if exact_free:
+        selected = min(exact_free, key=lambda item: (checkpoint_score(item), exact_mean(item)))
+        reason = "exact_collision_free_lowest_checkpoint_score"
+    else:
+        selected = min(
+            evaluated,
+            key=lambda item: (exact_mean(item), exact_frames(item), checkpoint_score(item)),
+        )
+        reason = "minimum_exact_fcl_mean_penetration"
+
+    summary = {
+        "selection_reason": reason,
+        "topology_threshold": int(topology_threshold),
+        "proxy_col_threshold": proxy_col_threshold,
+        "candidate_source": candidate_source,
+        "num_total_checkpoints": len(records),
+        "num_candidate_checkpoints": len(candidate_records),
+        "num_evaluated_checkpoints": len(evaluated),
+        "num_reused_exact_fcl_results": sum(
+            1 for record in evaluated if record["exact_fcl"].get("reused", False)
+        ),
+        "selected_step": int(selected["step"]),
+        "selected_motion": selected["motion"],
+        "selected_x": selected["x"],
+        "selected_z": selected["z"],
+        "selected_checkpoint_score": selected.get("checkpoint_score"),
+        "selected_exact_collision_free": bool(
+            selected["exact_fcl_results"].get("exact_collision_free", False)
+        ),
+        "selected_num_collision_frames": int(
+            selected["exact_fcl_results"].get("num_collision_frames", -1)
+        ),
+        "selected_mean_penetration_depth": exact_mean(selected),
+        "records": [
+            {
+                "step": int(record["step"]),
+                "motion": record["motion"],
+                "proxy_col": record.get("col"),
+                "checkpoint_score": record.get("checkpoint_score"),
+                "exact_collision_free": bool(
+                    record["exact_fcl_results"].get("exact_collision_free", False)
+                ),
+                "num_collision_frames": int(
+                    record["exact_fcl_results"].get("num_collision_frames", -1)
+                ),
+                "mean_penetration_depth": exact_mean(record),
+            }
+            for record in evaluated
+        ],
+    }
+    with (output_dir / "selection_summary.json").open("w", encoding="utf-8") as handle:
+        json.dump(summary, handle, indent=2)
+    return summary
 
 
 def main() -> None:
@@ -278,7 +596,13 @@ def main() -> None:
         model.std,
     )
 
-    loss_logs = {"total": [], "collision": [], "similarity": []}
+    loss_logs = {
+        "total": [],
+        "collision": [],
+        "similarity": [],
+        "temporal": [],
+        "checkpoint_score": [],
+    }
 
     # ─── 6. Run Stage 2 Optimization ─────────────────────────────────────────
     print("\n" + "=" * 60)
@@ -303,12 +627,72 @@ def main() -> None:
         loss_logs["collision"].append(l_col.item())
         loss_logs["similarity"].append(l_sim.item())
         checkpoint_score = args.similarity_scale * l_sim + temporal_loss
+        loss_logs["temporal"].append(temporal_loss.item())
+        loss_logs["checkpoint_score"].append(checkpoint_score.item())
         return loss, {
             "col": l_col.item(),
             "sim": l_sim.item(),
             "temporal": temporal_loss.item(),
             "checkpoint_score": checkpoint_score.item(),
         }
+
+    if args.exact_fcl_select_checkpoint and args.save_checkpoint_motions_every <= 0:
+        raise ValueError(
+            "--exact_fcl_select_checkpoint requires "
+            "--save_checkpoint_motions_every > 0"
+        )
+
+    checkpoint_callback = None
+    checkpoint_metadata_path = None
+    if args.save_checkpoint_motions_every > 0:
+        checkpoint_motion_dir = Path(
+            args.checkpoint_motion_dir
+            if args.checkpoint_motion_dir is not None
+            else os.path.join(args.output_dir, "checkpoint_motions")
+        )
+        checkpoint_motion_dir.mkdir(parents=True, exist_ok=True)
+        checkpoint_metadata_path = checkpoint_motion_dir / "metadata.jsonl"
+        if checkpoint_metadata_path.exists():
+            checkpoint_metadata_path.unlink()
+
+        def checkpoint_callback(
+            step: int,
+            z: torch.Tensor,
+            x: torch.Tensor,
+            details: dict,
+        ) -> None:
+            """Save Stage 2 checkpoint tensors and public-format motion."""
+            should_save = (
+                step % args.save_checkpoint_motions_every == 0
+                or step == args.s2_steps - 1
+            )
+            if not should_save:
+                return
+            with torch.no_grad():
+                checkpoint_motion = _latent_to_motion_135(
+                    x.detach(),
+                    model.mean,
+                    model.std,
+                    target_motion[:, 132:135],
+                )
+            checkpoint_path = checkpoint_motion_dir / f"step_{step:04d}.npy"
+            checkpoint_x_path = checkpoint_motion_dir / f"step_{step:04d}_x.pt"
+            checkpoint_z_path = checkpoint_motion_dir / f"step_{step:04d}_z.pt"
+            np.save(checkpoint_path, checkpoint_motion.cpu().numpy())
+            torch.save(x.detach().cpu(), checkpoint_x_path)
+            torch.save(z.detach().cpu(), checkpoint_z_path)
+            metadata = {
+                "step": int(step),
+                "motion": str(checkpoint_path),
+                "x": str(checkpoint_x_path),
+                "z": str(checkpoint_z_path),
+                "col": details.get("col"),
+                "sim": details.get("sim"),
+                "temporal": details.get("temporal"),
+                "checkpoint_score": details.get("checkpoint_score"),
+            }
+            with checkpoint_metadata_path.open("a", encoding="utf-8") as handle:
+                handle.write(json.dumps(metadata) + "\n")
 
     s2_options = DNOOptions(
         num_opt_steps=args.s2_steps,
@@ -318,8 +702,14 @@ def main() -> None:
         lr_warm_up_steps=args.s2_lr_warmup_steps,
         lr_decay_steps=args.s2_lr_decay_steps,
     )
-    solver_s2 = DNOSolver(model_fn, criterion_s2, z_fitted, s2_options,
-                          col_threshold=args.col_return_threshold)
+    solver_s2 = DNOSolver(
+        model_fn,
+        criterion_s2,
+        z_fitted,
+        s2_options,
+        col_threshold=args.col_return_threshold,
+        checkpoint_callback=checkpoint_callback,
+    )
     optimization_start = time.monotonic()
     results_s2 = solver_s2()
     optimization_seconds = time.monotonic() - optimization_start
@@ -333,6 +723,54 @@ def main() -> None:
     # ─── 7. Save Results ─────────────────────────────────────────────────────
     optimized_x = results_s2["x"]
     optimized_z = results_s2["z"]
+    exact_selection_summary = None
+    if args.exact_fcl_select_checkpoint:
+        from poseshield.common.collision import DEFAULT_MOTION_TOPOLOGY_THRESHOLD
+
+        exact_selection_dir = Path(
+            args.exact_fcl_selection_dir
+            if args.exact_fcl_selection_dir is not None
+            else os.path.join(args.output_dir, "exact_fcl_checkpoint_selection")
+        )
+        distances_path = Path(args.exact_fcl_selection_distances)
+        if not distances_path.is_absolute():
+            distances_path = Path(workspace_root) / distances_path
+        topology_threshold = (
+            args.exact_fcl_selection_topology_threshold
+            if args.exact_fcl_selection_topology_threshold is not None
+            else DEFAULT_MOTION_TOPOLOGY_THRESHOLD
+        )
+        exact_selection_summary = _select_checkpoint_by_exact_fcl(
+            metadata_path=checkpoint_metadata_path,
+            output_dir=exact_selection_dir,
+            distances_path=distances_path,
+            device=args.exact_fcl_selection_device,
+            topology_threshold=topology_threshold,
+            resume=args.exact_fcl_selection_resume,
+            proxy_col_threshold=args.exact_fcl_selection_proxy_col_threshold,
+        )
+        optimized_x = torch.load(
+            exact_selection_summary["selected_x"],
+            map_location=device,
+        )
+        optimized_z = torch.load(
+            exact_selection_summary["selected_z"],
+            map_location=device,
+        )
+        if optimized_x.dim() != 3 or optimized_z.dim() != 3:
+            raise ValueError(
+                "Exact-FCL checkpoint selection loaded invalid tensor shapes: "
+                f"x={tuple(optimized_x.shape)}, z={tuple(optimized_z.shape)}"
+            )
+        print(
+            "Exact-FCL checkpoint selection chose step "
+            f"{exact_selection_summary['selected_step']} "
+            f"({exact_selection_summary['selection_reason']}, "
+            "collision_frames="
+            f"{exact_selection_summary['selected_num_collision_frames']}, "
+            "mean_penetration_depth="
+            f"{exact_selection_summary['selected_mean_penetration_depth']:.9f})"
+        )
 
     with torch.no_grad():
         selected_col = float(loss_collision(optimized_x, model.mean, model.std).item())
@@ -373,10 +811,14 @@ def main() -> None:
         "last_iteration_col": loss_logs["collision"][-1],
         "last_iteration_sim": loss_logs["similarity"][-1],
     }
+    if exact_selection_summary is not None:
+        summary["exact_fcl_checkpoint_selection"] = exact_selection_summary
     with open(os.path.join(args.output_dir, "args.json"), "w", encoding="utf-8") as f:
         json.dump(vars(args), f, indent=4)
     with open(os.path.join(args.output_dir, "summary.json"), "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2)
+    with open(os.path.join(args.output_dir, "loss_history.json"), "w", encoding="utf-8") as f:
+        json.dump(loss_logs, f, indent=2)
 
     print(f"RESULT col={selected_col:.9f}")
     print(f"RESULT sim={selected_sim:.9f}")
@@ -415,7 +857,10 @@ def main() -> None:
         import pickle
         import matplotlib.pyplot as plt
         from tqdm import tqdm
-        from poseshield.common.collision import self_collision_status
+        from poseshield.common.collision import (
+            DEFAULT_MOTION_TOPOLOGY_THRESHOLD,
+            self_collision_status,
+        )
 
         root_rotation = optimized_unnorm[0, :, 3:9]
         body_rotation = optimized_unnorm[0, :, 9:135].reshape(seq_len, 21, 6)
@@ -450,8 +895,14 @@ def main() -> None:
 
         collision_flags = []
         penetration_depths = []
+        motion_topology_threshold = DEFAULT_MOTION_TOPOLOGY_THRESHOLD
         for i in tqdm(range(seq_len), desc="Detecting collision"):
-            has_collision, penetration_depth = self_collision_status(vertices[i], faces, distances)
+            has_collision, penetration_depth = self_collision_status(
+                vertices[i],
+                faces,
+                distances,
+                topology_threshold=motion_topology_threshold,
+            )
             collision_flags.append(bool(has_collision))
             penetration_depths.append(float(penetration_depth))
 
@@ -471,6 +922,7 @@ def main() -> None:
             "exact_collision_free": exact_collision_free,
             "num_collision_frames": len(collision_frames),
             "collision_frame_indices": collision_frames,
+            "topology_threshold": motion_topology_threshold,
             "mean_penetration_depth": mean_penetration,
             "penetration_depth_seq": penetration_depths,
         }

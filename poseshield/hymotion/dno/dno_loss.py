@@ -11,11 +11,19 @@ global_config_path = os.path.join(project_root, "config_files", "global_path.yam
 with open(global_config_path, 'r') as f:
     paths = yaml.safe_load(f)
 
-BODY_MODEL_PATH_ = paths['BODY_MODEL_PATH']
-MEAN_PATH_ = paths['MEAN_PATH']
-STD_PATH_ = paths['STD_PATH']
-POSESHIELD_CONFIG_PATH = paths.get('MOTION_CKPT_CONFIG')
-POSESHIELD_WEIGHTS_PATH = paths.get('MOTION_CKPT_PATH')
+
+def _resolve_project_path(path):
+    """Resolve config paths relative to the PoseShield project root."""
+    if path is None or os.path.isabs(path):
+        return path
+    return os.path.join(project_root, path)
+
+
+BODY_MODEL_PATH_ = _resolve_project_path(paths['BODY_MODEL_PATH'])
+MEAN_PATH_ = _resolve_project_path(paths['MEAN_PATH'])
+STD_PATH_ = _resolve_project_path(paths['STD_PATH'])
+POSESHIELD_CONFIG_PATH = _resolve_project_path(paths.get('MOTION_CKPT_CONFIG'))
+POSESHIELD_WEIGHTS_PATH = _resolve_project_path(paths.get('MOTION_CKPT_PATH'))
 
 # ── SMPLH kinematic-chain weights ─────────────────────────────────────────────
 # Weight for each of the 21 body joints (indices 1-21, root excluded) =

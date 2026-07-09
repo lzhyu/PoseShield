@@ -113,7 +113,7 @@ Download and extract the PoseShield external assets at the repository root:
 ```bash
 unzip PoseShield_release_dependencies_20260628.zip -d .
 unzip PoseShield_release_pose_data_20260628.zip -d .
-unzip PoseShield_release_motion_data_20260628.zip -d .
+unzip PoseShield_release_motion_data_20260708.zip -d .
 unzip PoseShield_release_safield_demo_20260703.zip -d .  # optional experimental SAField demo
 ```
 
@@ -245,7 +245,8 @@ python -m poseshield.hymotion.dno.run_dno_stage2 \
     --output_dir demos/output_motion/${STEM}_stage2
 ```
 
-The demo scripts use validated release defaults.
+The demo scripts use validated release defaults for motion optimization and
+final collision validation.
 
 Stage 2 writes:
 
@@ -278,10 +279,10 @@ motion-level code:
 shape: [frames, 135]
 
 [0:132]   22 joints × 6D rotations, HY-Motion column-interleaved layout
-[132:135] absolute global translation [abs_x, abs_y, abs_z]
+[132:135] absolute global translation [x, y_up, z_forward]
 ```
 
-Coordinate convention:
+Internal coordinate convention:
 
 ```text
 Y-up
@@ -290,6 +291,12 @@ Y = height/up
 Z = forward
 frame 0 human facing +Z
 ```
+
+The demo motions in `demo_asset/` and the bundled canonical MotionFix motions
+under `data/motion_canonical/` are already in this exact public format. The
+release loader reads public-format motion by default: root-first joint order
+and absolute `[x, y_up, z_forward]` translation. Legacy/source-layout artifacts
+must be passed with explicit conversion flags before evaluation.
 
 The optimized motion keeps the original absolute translation trajectory and
 updates the pose rotations.

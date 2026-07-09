@@ -13,12 +13,15 @@ import smplx
 _project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 _global_config_path = os.path.join(_project_root, "config_files", "global_path.yaml")
 DEFAULT_TOPOLOGY_THRESHOLD = 50
+DEFAULT_MOTION_TOPOLOGY_THRESHOLD = 40
 if os.path.exists(_global_config_path):
     try:
         with open(_global_config_path, "r") as _f:
             _config = yaml.safe_load(_f)
             if _config and "TOPOLOGY_THRESHOLD" in _config:
                 DEFAULT_TOPOLOGY_THRESHOLD = int(_config["TOPOLOGY_THRESHOLD"])
+            if _config and "MOTION_TOPOLOGY_THRESHOLD" in _config:
+                DEFAULT_MOTION_TOPOLOGY_THRESHOLD = int(_config["MOTION_TOPOLOGY_THRESHOLD"])
     except Exception:
         pass
 

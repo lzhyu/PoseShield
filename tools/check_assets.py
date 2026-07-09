@@ -20,6 +20,7 @@ class AssetSpec:
     paths: tuple[Path, ...]
     workflow: str
     required: bool = True
+    validator: str | None = None
 
 
 SHARED_ASSETS = (
@@ -84,7 +85,7 @@ EXACT_FCL_ASSETS = (
     ),
 )
 
-DATA_ASSETS = (
+POSE_DATA_ASSETS = (
     AssetSpec(
         "HwC pose training split list",
         (Path("data/dataset/train_list.csv"),),
@@ -120,10 +121,14 @@ DATA_ASSETS = (
         (Path("data/dataset_test/*.png"),),
         "pose collision-resolution benchmark evaluation",
     ),
+)
+
+MOTION_DATA_ASSETS = (
     AssetSpec(
         "Canonical MotionFix motion files",
         (Path("data/motion_canonical/motionfix_*_135.npy"),),
         "motion evaluation",
+        validator="public_motion_format",
     ),
 )
 
@@ -155,18 +160,40 @@ def parse_args() -> argparse.Namespace:
         default=PROJECT_ROOT,
         help="PoseShield repository root. Defaults to this script's parent repo.",
     )
+    parser.add_argument(
+        "--mode",
+        choices=("pose", "motion", "all"),
+        default="all",
+        help=(
+            "Asset group to validate. Default 'all' checks the full release "
+            "layout including released data and optional assets."
+        ),
+    )
+    parser.add_argument(
+        "--check-data",
+        action="store_true",
+        help="Also check released data for the selected non-'all' workflow.",
+    )
     return parser.parse_args()
 
 
-def select_assets() -> list[AssetSpec]:
-    """Return the default full-release asset checklist."""
-    return [
-        *SHARED_ASSETS,
-        *EXACT_FCL_ASSETS,
-        *MOTION_ASSETS,
-        *DATA_ASSETS,
-        *OPTIONAL_ASSETS,
-    ]
+def select_assets(mode: str, check_data: bool) -> list[AssetSpec]:
+    """Return the asset checks required for the selected workflow."""
+    assets = list(SHARED_ASSETS)
+    if mode in {"pose", "motion", "all"}:
+        assets.extend(EXACT_FCL_ASSETS)
+    if mode in {"motion", "all"}:
+        assets.extend(MOTION_ASSETS)
+
+    include_data = check_data or mode == "all"
+    if include_data:
+        if mode in {"pose", "all"}:
+            assets.extend(POSE_DATA_ASSETS)
+        if mode in {"motion", "all"}:
+            assets.extend(MOTION_DATA_ASSETS)
+    if mode == "all":
+        assets.extend(OPTIONAL_ASSETS)
+    return assets
 
 
 def format_size(path: Path) -> str:
@@ -208,8 +235,36 @@ def check_asset(root: Path, spec: AssetSpec) -> tuple[bool, str]:
     path = existing[0]
     if path.is_file() and path.stat().st_size == 0:
         return False, f"EMPTY {spec.label}: {path.relative_to(root)} ({spec.workflow})"
+    if spec.validator == "public_motion_format":
+        ok, detail = validate_public_motion_files(root, existing)
+        if not ok:
+            return False, f"INVALID {spec.label}: {detail} ({spec.workflow})"
     suffix = f"{len(existing)} match(es)" if len(existing) > 1 else format_size(path)
     return True, f"{spec.label}: {path.relative_to(root)} [{suffix}]"
+
+
+def validate_public_motion_files(root: Path, paths: list[Path]) -> tuple[bool, str]:
+    """Validate that motion files are readable canonical motion arrays."""
+    import numpy as np
+
+    sys.path.insert(0, str(PROJECT_ROOT))
+    from poseshield.hymotion.utils.motion_format import validate_motion_array
+
+    failures: list[str] = []
+    for path in paths:
+        try:
+            motion = np.load(path)
+            validate_motion_array(motion, name=str(path))
+            if not np.isfinite(motion).all():
+                failures.append(f"{path.relative_to(root)} contains non-finite values")
+        except Exception as error:  # pragma: no cover - defensive asset check
+            failures.append(f"{path.relative_to(root)}: {error}")
+    if failures:
+        preview = "; ".join(failures[:3])
+        if len(failures) > 3:
+            preview += f"; ... {len(failures) - 3} more"
+        return False, preview
+    return True, f"{len(paths)} canonical motion file(s)"
 
 
 def print_group(title: str, messages: list[str]) -> None:
@@ -235,7 +290,7 @@ def main() -> int:
     missing_optional: list[str] = []
 
     print(f"PoseShield asset check\nRoot: {root}")
-    for spec in select_assets():
+    for spec in select_assets(args.mode, args.check_data):
         ok, message = check_asset(root, spec)
         if ok:
             present.append(message)

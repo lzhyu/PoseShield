@@ -121,8 +121,17 @@ data/motion_canonical/*
 !data/motion_canonical/README.md
 deps/
 ckpts/
+deps
+ckpts
+third_party
 experiments/
 tmp/
+README_MOTION_DATA.txt
+docs/motion_format_and_evaluation.md
+poseshield/evaluation/
+tests/test_evaluation_metrics.py
+tools/evaluate_motion_metrics.py
+tools/normalize_motion_format.py
 
 # Optimizations and evaluation outputs
 opt_samples/
