@@ -38,7 +38,6 @@ them.
 - [x] Humans with Collisions (HwC) data for training, evaluation, and the 500-pose benchmark.
 - [x] Exact-FCL validation plus HTML and optional Blender visualization.
 - [x] Experimental shape-aware SAField demo that resolves a fixed sample and exports OBJ meshes.
-- [ ] Evaluation on self-colliding human motion sequences.
 
 ## Overview
 
