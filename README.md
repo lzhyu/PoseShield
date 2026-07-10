@@ -20,6 +20,7 @@
 
 <p align="center">
   <a href="https://arxiv.org/abs/2606.29686"><img src="https://img.shields.io/badge/arXiv-2606.29686-b31b1b.svg" alt="arXiv"></a>
+  <a href="https://huggingface.co/ZYYY99/PoseShield"><img src="https://img.shields.io/badge/Hugging%20Face-PoseShield-ffcc4d.svg" alt="Hugging Face"></a>
 </p>
 
 <p align="center">
