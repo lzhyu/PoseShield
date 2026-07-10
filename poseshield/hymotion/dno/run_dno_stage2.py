@@ -145,6 +145,8 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--hand_joint_velocity_coef", type=float, default=0.5)
     parser.add_argument("--wrist_position_coef", type=float, default=12.0)
     parser.add_argument("--lower_body_coef", type=float, default=0.0)
+    parser.add_argument("--joint_jerk_coef", type=float, default=0.0)
+    parser.add_argument("--lower_body_joint_jerk_coef", type=float, default=0.0)
     parser.add_argument("--rotation_velocity_scale", type=float, default=5.0)
     parser.add_argument("--upper_body_velocity_scale", type=float, default=3.0)
     parser.add_argument("--upper_body_rotation_scale", type=float, default=0.0)
@@ -585,6 +587,8 @@ def main() -> None:
         hand_joint_velocity_coef=args.hand_joint_velocity_coef,
         wrist_position_coef=args.wrist_position_coef,
         lower_body_coef=args.lower_body_coef,
+        joint_jerk_coef=args.joint_jerk_coef,
+        lower_body_joint_jerk_coef=args.lower_body_joint_jerk_coef,
         use_weighted_loss=args.weighted_rot_loss,
         use_final_output_geometry=True,
     )

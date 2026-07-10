@@ -124,7 +124,8 @@ class MotionSimilarityLoss:
                  translation_mode="abs_3d", use_final_output_geometry=False,
                  rotation_coef=1.0, rot_velocity_coef=0.0,
                  upper_body_rot_weight=1.0, head_rotation_coef=0.0,
-                 head_rot_velocity_coef=0.0):
+                 head_rot_velocity_coef=0.0,
+                 joint_jerk_coef=0.0, lower_body_joint_jerk_coef=0.0):
         self.device = device
         # Load motion file (expecting [Frames, D] numpy array)
         self.use_weighted_loss = use_weighted_loss
@@ -165,6 +166,8 @@ class MotionSimilarityLoss:
         self.upper_body_rot_weight = upper_body_rot_weight
         self.head_rotation_coef = head_rotation_coef
         self.head_rot_velocity_coef = head_rot_velocity_coef
+        self.joint_jerk_coef = joint_jerk_coef
+        self.lower_body_joint_jerk_coef = lower_body_joint_jerk_coef
 
         self.use_smpl_loss = (
             joint_position_coef > 0.0
@@ -173,6 +176,8 @@ class MotionSimilarityLoss:
             or hand_joint_velocity_coef > 0.0
             or wrist_position_coef > 0.0
             or lower_body_coef > 0.0
+            or joint_jerk_coef > 0.0
+            or lower_body_joint_jerk_coef > 0.0
         )
         self.last_wrist_position_mse = None
         self.last_wrist_mean_distance = None
@@ -387,6 +392,28 @@ class MotionSimilarityLoss:
                 hand_target_velocity = joints_target[:, 23:][1:] - joints_target[:, 23:][:-1]
                 hand_velocity_loss = F.mse_loss(hand_velocity, hand_target_velocity)
                 sample_loss += self.hand_joint_velocity_coef * hand_velocity_loss
+
+            if joints_pred.shape[0] >= 4 and (
+                self.joint_jerk_coef > 0.0 or self.lower_body_joint_jerk_coef > 0.0
+            ):
+                gen_jerk = (
+                    joints_pred[3:] - 3 * joints_pred[2:-1]
+                    + 3 * joints_pred[1:-2] - joints_pred[:-3]
+                )
+                target_jerk = (
+                    joints_target[3:] - 3 * joints_target[2:-1]
+                    + 3 * joints_target[1:-2] - joints_target[:-3]
+                )
+                if self.joint_jerk_coef > 0.0:
+                    jerk_loss = F.l1_loss(gen_jerk[:, :22], target_jerk[:, :22])
+                    sample_loss += self.joint_jerk_coef * jerk_loss
+                if self.lower_body_joint_jerk_coef > 0.0:
+                    lower_idx = [1, 2, 4, 5, 7, 8, 10, 11]
+                    lower_jerk_loss = F.l1_loss(
+                        gen_jerk[:, lower_idx],
+                        target_jerk[:, lower_idx],
+                    )
+                    sample_loss += self.lower_body_joint_jerk_coef * lower_jerk_loss
                 
             loss_list.append(sample_loss)
             

@@ -40,7 +40,7 @@ def get_args():
     parser.add_argument("--s1_hand_coef", type=float, default=0.1)
     parser.add_argument("--s1_joint_velocity_coef", type=float, default=0.1)
     parser.add_argument("--s1_hand_joint_velocity_coef", type=float, default=0.0)
-    parser.add_argument("--s1_lower_body_coef", type=float, default=0.0)
+    parser.add_argument("--s1_lower_body_coef", type=float, default=1.0)
     parser.add_argument("--s1_translation_coef", type=float, default=1.0, help="Weight coefficient for translation loss in Stage 1")
     parser.add_argument("--s1_translation_smooth_coef", type=float, default=15.0, help="Weight coefficient for translation smoothness loss in Stage 1")
     parser.add_argument("--s1_translation_smooth_mode", type=str, default="second_diff_abs", choices=["first_diff", "second_diff_abs"], help="Translation smoothing loss mode")
@@ -48,6 +48,8 @@ def get_args():
     parser.add_argument("--s1_translation_mode", type=str, default="abs_3d", choices=["gt_format", "abs_3d"], help="Translation similarity loss mode")
     parser.add_argument("--s1_rotation_coef", type=float, default=10.0, help="Rotation scaling coefficient for root and body rotations")
     parser.add_argument("--s1_rot_velocity_coef", type=float, default=5.0, help="Rotation velocity loss coefficient")
+    parser.add_argument("--s1_joint_jerk_coef", type=float, default=0.0, help="Body-joint third-difference loss coefficient")
+    parser.add_argument("--s1_lower_body_joint_jerk_coef", type=float, default=300.0, help="Lower-body joint third-difference loss coefficient")
     parser.add_argument("--s1_upper_body_rot_weight", type=float, default=5.0, help="Weight scaling factor for upper body and wrist joints")
     parser.add_argument("--s1_weighted_rot_loss", action="store_true", help="Use subtree-size weighted rotation loss for Stage 1")
     parser.add_argument("--no_s1_weighted_rot_loss", action="store_false", dest="s1_weighted_rot_loss", help="Do not use subtree-size weighted rotation loss for Stage 1")
@@ -204,6 +206,8 @@ def main():
         translation_mode=args.s1_translation_mode,
         rotation_coef=args.s1_rotation_coef,
         rot_velocity_coef=args.s1_rot_velocity_coef,
+        joint_jerk_coef=args.s1_joint_jerk_coef,
+        lower_body_joint_jerk_coef=args.s1_lower_body_joint_jerk_coef,
         upper_body_rot_weight=args.s1_upper_body_rot_weight,
     )
     loss_collision = MotionCollisionLoss(device, collision_threshold=999.0) # monitor only
@@ -240,7 +244,8 @@ def main():
                 loss_similarity_s1.use_smpl_loss = (
                     args.s1_joint_position_coef > 0.0 or args.s1_hand_coef > 0.0 or
                     args.s1_joint_velocity_coef > 0.0 or args.s1_hand_joint_velocity_coef > 0.0 or
-                    args.s1_lower_body_coef > 0.0
+                    args.s1_lower_body_coef > 0.0 or args.s1_joint_jerk_coef > 0.0 or
+                    args.s1_lower_body_joint_jerk_coef > 0.0
                 )
         l_sim = loss_similarity_s1(x, model.mean, model.std)
         with torch.no_grad():
