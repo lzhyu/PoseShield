@@ -2,13 +2,12 @@ import os
 import numpy as np
 import torch
 import yaml
-import pickle
 import smplx
 from tqdm import tqdm
 from pathlib import Path
 
 from poseshield.common.utils import sixd_to_mesh
-from poseshield.common.collision import is_mesh_self_intersecting, self_collision_status
+from poseshield.common.collision import is_mesh_self_intersecting, self_collision_status, load_topology_distances
 
 def label_pose(x, smpl_model, distances, device):
     """
@@ -47,7 +46,7 @@ def process_gt_data(directory_path):
         global_config = yaml.safe_load(f)
         model_path = global_config["BODY_MODEL_PATH"]
         distance_path = global_config["MESH_DISTANCE_PATH"]
-    distances = pickle.load(open(distance_path, "rb"))
+    distances = load_topology_distances(distance_path)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     smpl_model = smplx.create(

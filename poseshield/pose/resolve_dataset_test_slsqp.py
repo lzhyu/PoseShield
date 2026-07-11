@@ -15,12 +15,12 @@ from poseshield.pose.utils import (
     save_sample_as_param_pickle
 )
 import smplx
-import pickle
 from poseshield.common.config import get_cfg_defaults
 from tqdm import tqdm
 import time
 import yaml
 from poseshield.common.utils import load_model
+from poseshield.common.collision import load_topology_distances
 
 def main():
     global_config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "config_files", "global_path.yaml")
@@ -90,7 +90,7 @@ def main():
     model_path = global_config["BODY_MODEL_PATH"]
 
     distance_path = global_config["MESH_DISTANCE_PATH"]
-    distances = pickle.load(open(distance_path, "rb"))
+    distances = load_topology_distances(distance_path)
     smpl_model = smplx.create(
         model_path,
         model_type='smplh',

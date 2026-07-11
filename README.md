@@ -132,8 +132,9 @@ python tools/check_assets.py
 
 <br>
 
-The dependency package provides PoseShield checkpoints, HY-Motion normalization
-statistics, and the exact-FCL mesh distance table:
+The dependency package provides PoseShield checkpoints and HY-Motion
+normalization statistics. The compact exact-FCL mesh topology cache is included
+directly in this repository.
 
 | File | Destination | Description |
 |------|-------------|-------------|
@@ -141,7 +142,6 @@ statistics, and the exact-FCL mesh distance table:
 | `config.yaml` | `ckpts/poseshield/` | Collision field config |
 | `model_elu.pth` | `ckpts/poseshield/` | ELU collision field for motion resolution |
 | `config_elu.yaml` | `ckpts/poseshield/` | ELU collision field config |
-| `distances.pkl` | `deps/` | Mesh topology distances for exact-FCL checks |
 | `Mean.npy`, `Std.npy` | `ckpts/tencent/HY-Motion-1.0-Lite/stats/` | HY-Motion normalization statistics |
 
 For motion-level resolution, also download
@@ -166,7 +166,7 @@ deps/
 +-- body_models/
 |   +-- smplh/
 |       +-- SMPLH_NEUTRAL.npz
-+-- distances.pkl
++-- topology_distances_30_60.npz
 data/
 +-- dataset/                     # Humans with Collisions (HwC) train/test data
 |   +-- train_list.csv

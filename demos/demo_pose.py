@@ -21,6 +21,7 @@ from poseshield.pose.resolve_slsqp import optimize_slsqp
 from poseshield.pose.utils import cost_function, constraint_function
 from poseshield.common.config import get_cfg_defaults
 from poseshield.common.utils import load_model
+from poseshield.common.collision import load_topology_distances
 
 def get_args():
     parser = argparse.ArgumentParser(description="PoseShield Pose Optimization Demo")
@@ -88,7 +89,7 @@ def main():
             with open(global_config_path, "r") as f:
                 global_config = yaml.safe_load(f)
             model_path = global_config.get("BODY_MODEL_PATH", "./body_models")
-            distance_path = global_config.get("MESH_DISTANCE_PATH", "./dataset/distances.pkl")
+            distance_path = global_config.get("MESH_DISTANCE_PATH", "deps/topology_distances_30_60.npz")
             
             if os.path.exists(model_path):
                 import smplx
@@ -103,7 +104,7 @@ def main():
                 print(f"Loaded SMPL-H model from {model_path} for verification.")
                 
                 if os.path.exists(distance_path) and os.environ.get("SKIP_METRICS") != "1":
-                    distances = pickle.load(open(distance_path, "rb"))
+                    distances = load_topology_distances(distance_path)
                     print(f"Loaded mesh distance file from {distance_path}.")
                 else:
                     print(f"Mesh distance file not loaded (does not exist or SKIP_METRICS is enabled). Skipping collision status checks.")

@@ -30,6 +30,7 @@ class ExactFCLCheckpointSelectionTest(unittest.TestCase):
         self.assertEqual(args.s2_steps, 100)
         self.assertEqual(args.save_checkpoint_motions_every, 10)
         self.assertTrue(args.exact_fcl_select_checkpoint)
+        self.assertEqual(args.exact_fcl_selection_distances, "deps/topology_distances_30_60.npz")
         self.assertEqual(args.exact_fcl_selection_proxy_col_threshold, 1e-3)
 
     def test_exact_fcl_checkpoint_selection_can_be_disabled(self) -> None:

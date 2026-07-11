@@ -1,4 +1,4 @@
-MESH_DISTANCE_PATH: "deps/distances.pkl"
+MESH_DISTANCE_PATH: "deps/topology_distances_30_60.npz"
 TOPOLOGY_THRESHOLD: 50
 MOTION_TOPOLOGY_THRESHOLD: 40
 BODY_MODEL_PATH: "deps/body_models"

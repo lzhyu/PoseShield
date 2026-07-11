@@ -2,13 +2,12 @@ import os
 import numpy as np
 import torch
 import smplx
-import pickle
 import yaml
 from tqdm import tqdm
 from pathlib import Path
 
 from poseshield.common.utils import sixd_to_mesh, make_6d_rotation_valid
-from poseshield.common.collision import is_mesh_self_intersecting
+from poseshield.common.collision import is_mesh_self_intersecting, load_topology_distances
 
 def augment_pose(pose, purturb_strength=0.2):
     # random purturbation
@@ -30,7 +29,7 @@ if __name__=="__main__":
         ext='npz',
         use_pca=False
     ).to(device)
-    distances = pickle.load(open(distance_path, "rb"))
+    distances = load_topology_distances(distance_path)
 
     file_paths = [
         os.path.join(directory_path, f) 

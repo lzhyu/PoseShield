@@ -80,7 +80,7 @@ MOTION_ASSETS = (
 EXACT_FCL_ASSETS = (
     AssetSpec(
         "Exact-FCL mesh topology distances",
-        (Path("deps/distances.pkl"),),
+        (Path("deps/topology_distances_30_60.npz"),),
         "exact mesh self-collision validation",
     ),
 )

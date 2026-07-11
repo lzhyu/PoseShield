@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import pickle
 from pathlib import Path
 import sys
 
@@ -14,7 +13,7 @@ import numpy as np
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from poseshield.common.collision import DEFAULT_MOTION_TOPOLOGY_THRESHOLD
+from poseshield.common.collision import DEFAULT_MOTION_TOPOLOGY_THRESHOLD, load_topology_distances
 from poseshield.hymotion.utils.motion_format import load_motion
 
 
@@ -23,13 +22,22 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Exact SMPL-H mesh/FCL collision check")
     parser.add_argument("--motion", type=Path, required=True, help="Canonical [frames, 135] motion")
     parser.add_argument("--output-dir", type=Path, required=True, help="Directory for JSON and plot outputs")
-    parser.add_argument("--distances", type=Path, default=PROJECT_ROOT / "deps/distances.pkl")
+    parser.add_argument("--distances", type=Path, default=PROJECT_ROOT / "deps/topology_distances_30_60.npz")
     parser.add_argument("--device", default=None, help="Torch device; defaults to CUDA when available")
     parser.add_argument(
         "--topology-threshold",
         type=int,
         default=DEFAULT_MOTION_TOPOLOGY_THRESHOLD,
         help="Topological face-distance threshold for motion exact-FCL checks.",
+    )
+    parser.add_argument(
+        "--allow-collisions-exit-zero",
+        action="store_true",
+        help=(
+            "Write exact-FCL collision results but do not fail the process when "
+            "collisions remain. Useful for batch aggregation where collided "
+            "outputs are still valid negative examples."
+        ),
     )
     return parser.parse_args()
 
@@ -90,8 +98,7 @@ def main() -> None:
         )
     vertices = smpl_output.vertices.cpu().numpy()
     faces = smpl_model.faces
-    with distance_path.open("rb") as handle:
-        distances = pickle.load(handle)
+    distances = load_topology_distances(distance_path)
 
     collision_flags: list[bool] = []
     penetration_depths: list[float] = []
@@ -142,7 +149,7 @@ def main() -> None:
     print(f"EXACT_FCL max_penetration_depth={penetration_array.max():.9f}")
     print(f"EXACT_FCL total_penetration_depth={penetration_array.sum():.9f}")
     print(f"EXACT_FCL results={result_path}")
-    if collision_frames:
+    if collision_frames and not args.allow_collisions_exit_zero:
         raise RuntimeError(
             f"Exact FCL found collisions in {len(collision_frames)} frames"
         )

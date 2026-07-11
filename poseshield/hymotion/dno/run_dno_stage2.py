@@ -85,7 +85,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument(
         "--exact_fcl_selection_distances",
         type=str,
-        default="deps/distances.pkl",
+        default="deps/topology_distances_30_60.npz",
         help="Mesh topology distances used by exact-FCL checkpoint selection.",
     )
     parser.add_argument(
@@ -858,11 +858,11 @@ def main() -> None:
     if args.evaluate_penetration:
         print("Evaluating exact-mesh penetration depth...")
         import smplx
-        import pickle
         import matplotlib.pyplot as plt
         from tqdm import tqdm
         from poseshield.common.collision import (
             DEFAULT_MOTION_TOPOLOGY_THRESHOLD,
+            load_topology_distances,
             self_collision_status,
         )
 
@@ -891,11 +891,10 @@ def main() -> None:
             vertices = output.vertices.cpu().numpy()
             faces = smpl_model.faces
             
-        dist_path = "deps/distances.pkl"
+        dist_path = "deps/topology_distances_30_60.npz"
         if not os.path.exists(dist_path):
             raise FileNotFoundError(f"Distances file not found: {dist_path}")
-        with open(dist_path, "rb") as f:
-            distances = pickle.load(f)
+        distances = load_topology_distances(dist_path)
 
         collision_flags = []
         penetration_depths = []
