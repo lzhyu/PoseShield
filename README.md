@@ -349,7 +349,7 @@ Blender rendering is optional and is not required for PoseShield evaluation.
 The renderer can export a side-by-side video with the original motion in red,
 the PoseShield output in green, and precomputed exact-contact patches in yellow:
 
-<video src="demos/contact_render_demo/render_contact_preview.webm" controls muted loop width="720"></video>
+![Blender contact render preview](demos/contact_render_demo/render_contact_preview.gif)
 
 A small ready-to-render validation pair is included in
 [`demos/contact_render_demo/`](demos/contact_render_demo/):

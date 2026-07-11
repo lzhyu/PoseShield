@@ -12,6 +12,7 @@ the full motion optimizer.
 - `contact_summary.json`: mask metadata and collision-frame summary.
 - `render_meshes.npz`: precomputed red/green SMPL-H meshes plus the yellow
   contact masks for quick rendering.
+- `render_contact_preview.gif`: GitHub README-friendly preview animation.
 - `render_contact_preview.webm`: pre-rendered preview of the demo output.
 
 The contact mask is a prerequisite for yellow overlays. It must match the same
@@ -22,7 +23,7 @@ time; Blender only visualizes this precomputed mask.
 
 Preview:
 
-<video src="render_contact_preview.webm" controls muted loop width="720"></video>
+![Blender contact render preview](render_contact_preview.gif)
 
 Run from the repository root:
 
