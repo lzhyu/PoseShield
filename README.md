@@ -363,6 +363,42 @@ Blender/MP4 rendering is optional and is not required for PoseShield evaluation.
 The default render colors are red for the original motion and green for the
 optimized motion.
 
+To add yellow contact patches to the red original motion, first export
+TOPO-filtered exact-FCL contact masks and then pass the saved mask to the
+renderer. The mask must be generated from the same original motion, SMPL-H mesh
+topology, and topology threshold used for rendering; the Blender step only
+visualizes the precomputed face mask.
+
+A small ready-to-render validation pair is included under
+`demos/contact_render_demo/`:
+
+```bash
+BLENDER_PATH=/path/to/blender bash demos/demo_blender_contact_render.sh
+```
+
+This renders `demos/contact_render_demo/render_contact.mp4` from the bundled
+original motion, PoseShield output motion, and TOPO=40 exact-FCL contact mask.
+
+```bash
+python tools/export_motion_contact_masks.py \
+    --motions demo_asset/$SAMPLE \
+    --output-dir demos/output_motion/${STEM}_stage2/contact_masks \
+    --topology-threshold 40 \
+    --rings 1
+
+python tools/render_motion_blender.py \
+    --original demo_asset/$SAMPLE \
+    --optimized demos/output_motion/${STEM}_stage2/optimized_motion.npy \
+    --output demos/output_motion/${STEM}_stage2/render_contact.mp4 \
+    --blender-path /path/to/blender \
+    --ffmpeg-path /path/to/ffmpeg \
+    --highlight-contact \
+    --contact-mask-path demos/output_motion/${STEM}_stage2/contact_masks/${STEM}_contact_masks.npz
+```
+
+If no `--highlight-contact` or `--contact-mask-path` is provided, the renderer
+produces the same clean red/green side-by-side video without yellow overlays.
+
 </details>
 
 ## Evaluation

@@ -36,6 +36,7 @@ def parse_args():
     parser.add_argument("--camera-yaw", type=float, default=0.0)
     parser.add_argument("--camera-pitch", type=float, default=12.0)
     parser.add_argument("--light-energy", type=float, default=1.0)
+    parser.add_argument("--contact-offset", type=float, default=0.022)
     parser.add_argument("--fps", type=int, default=30)
     parser.add_argument("--res-x", type=int, default=1920)
     parser.add_argument("--res-y", type=int, default=1080)
@@ -80,6 +81,34 @@ def create_clean_material(name, base_color, metallic=0.0, roughness=0.85):
     return mat
 
 
+def create_contact_material(name):
+    """High-visibility yellow material for exact contact surface overlays."""
+    mat = bpy.data.materials.new(name=name)
+    mat.use_nodes = True
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+    nodes.clear()
+
+    output = nodes.new(type='ShaderNodeOutputMaterial')
+    output.location = (300, 0)
+    bsdf = nodes.new(type='ShaderNodeBsdfPrincipled')
+    bsdf.location = (0, 0)
+    bsdf.inputs['Base Color'].default_value = (1.0, 0.82, 0.02, 1.0)
+    bsdf.inputs['Metallic'].default_value = 0.0
+    bsdf.inputs['Roughness'].default_value = 0.58
+    if 'Specular' in bsdf.inputs:
+        bsdf.inputs['Specular'].default_value = 0.1
+    elif 'Specular IOR Level' in bsdf.inputs:
+        bsdf.inputs['Specular IOR Level'].default_value = 0.1
+    if 'Emission Color' in bsdf.inputs:
+        bsdf.inputs['Emission Color'].default_value = (1.0, 0.68, 0.0, 1.0)
+    if 'Emission Strength' in bsdf.inputs:
+        bsdf.inputs['Emission Strength'].default_value = 0.25
+
+    links.new(bsdf.outputs['BSDF'], output.inputs['Surface'])
+    return mat
+
+
 def resolve_render_engine(scene, requested_engine):
     """Return a Blender render-engine identifier compatible with this version."""
     available_engines = {
@@ -93,6 +122,17 @@ def resolve_render_engine(scene, requested_engine):
         f"Render engine {requested_engine!r} is not available; "
         f"available engines: {sorted(available_engines)}"
     )
+
+
+def set_display_color_management(scene):
+    """Use standard display colors so red/green meshes stay readable in GIFs."""
+    try:
+        scene.view_settings.view_transform = 'Standard'
+        scene.view_settings.look = 'None'
+        scene.view_settings.exposure = 0.0
+        scene.view_settings.gamma = 1.0
+    except Exception as exc:
+        print(f"Could not set color management: {exc}")
 
 
 def create_mesh_object(name, vertices, faces, material, location_offset):
@@ -124,6 +164,33 @@ def create_mesh_object(name, vertices, faces, material, location_offset):
     return obj
 
 
+def create_contact_mesh_object(name, vertices, faces, face_mask, material, location_offset, offset=0.014):
+    """Create a raised yellow surface patch for contact faces in the current frame."""
+    selected_faces = faces[face_mask]
+    if len(selected_faces) == 0:
+        return None
+
+    used_vertices = np.unique(selected_faces.reshape(-1))
+    remap = {int(old): idx for idx, old in enumerate(used_vertices)}
+    compact_faces = np.vectorize(remap.__getitem__)(selected_faces).astype(np.int32)
+    compact_vertices = vertices[used_vertices].copy()
+
+    normals = np.zeros_like(vertices, dtype=np.float64)
+    tri = vertices[selected_faces]
+    face_normals = np.cross(tri[:, 1] - tri[:, 0], tri[:, 2] - tri[:, 0])
+    lengths = np.linalg.norm(face_normals, axis=1, keepdims=True)
+    face_normals = face_normals / np.maximum(lengths, 1e-8)
+    for corner in range(3):
+        np.add.at(normals, selected_faces[:, corner], face_normals)
+    compact_normals = normals[used_vertices]
+    compact_lengths = np.linalg.norm(compact_normals, axis=1, keepdims=True)
+    compact_normals = compact_normals / np.maximum(compact_lengths, 1e-8)
+    compact_vertices = compact_vertices + compact_normals * offset
+
+    obj = create_mesh_object(name, compact_vertices, compact_faces, material, location_offset)
+    return obj
+
+
 def setup_world_lighting():
     """Clean studio-style world background."""
     world = bpy.data.worlds.get("World") or bpy.data.worlds.new("World")
@@ -147,10 +214,11 @@ def setup_lights(center, body_height, multiplier=1.0):
     # Key light
     key = bpy.data.lights.new("Key", type='AREA')
     key.energy = 800.0 * multiplier
-    key.size = body_height * 0.5  # smaller size for sharper shadows
+    key.size = body_height * 0.5
     key.color = (1.0, 0.98, 0.95)
-    key.use_contact_shadow = True
-    key.contact_shadow_distance = 0.15
+    if hasattr(key, "use_contact_shadow"):
+        key.use_contact_shadow = True
+        key.contact_shadow_distance = 0.15
     key_obj = bpy.data.objects.new("Key", key)
     key_obj.location = center + mathutils.Vector((dist * 0.8, -dist * 0.5, dist * 1.5))
     bpy.context.collection.objects.link(key_obj)
@@ -159,7 +227,7 @@ def setup_lights(center, body_height, multiplier=1.0):
 
     # Fill light
     fill = bpy.data.lights.new("Fill", type='AREA')
-    fill.energy = 50.0 * multiplier  # reduced to make key shadows pop
+    fill.energy = 50.0 * multiplier
     fill.size = body_height * 2.5
     fill.color = (0.92, 0.95, 1.0)
     fill_obj = bpy.data.objects.new("Fill", fill)
@@ -190,6 +258,10 @@ def main():
     verts_ref_raw = data["verts_a"]  # [L, 6890, 3]
     verts_opt_raw = data["verts_b"]  # [L, 6890, 3]
     faces = data["faces"]
+    # Optional yellow overlays are precomputed exact-FCL face masks. They must
+    # come from the same original motion, SMPL-H topology, and TOPO threshold as
+    # the mesh data in this render package.
+    contact_masks = data["contact_masks"] if "contact_masks" in data.files else np.zeros((len(verts_ref_raw), len(faces)), dtype=bool)
 
     # Y-up → Z-up
     verts_ref = np.stack([verts_ref_raw[..., 0], -verts_ref_raw[..., 2], verts_ref_raw[..., 1]], axis=-1)
@@ -204,6 +276,7 @@ def main():
     # Materials
     mat_ref = create_clean_material("MatRef", args.color_a, args.metallic, args.roughness)
     mat_opt = create_clean_material("MatOpt", args.color_b, args.metallic, args.roughness)
+    mat_contact = create_contact_material("MatContact")
 
     # Compute global bounding box across ALL frames for consistent camera
     all_verts = np.concatenate([verts_ref, verts_opt], axis=0)  # [2L, 6890, 3]
@@ -289,6 +362,7 @@ def main():
     print(f"Rendering {L} frames to {args.output_dir}/...")
     ref_obj = None
     opt_obj = None
+    contact_obj = None
 
     for frame_idx in range(L):
         # Delete previous frame's meshes
@@ -296,6 +370,8 @@ def main():
             bpy.data.objects.remove(ref_obj, do_unlink=True)
         if opt_obj is not None:
             bpy.data.objects.remove(opt_obj, do_unlink=True)
+        if contact_obj is not None:
+            bpy.data.objects.remove(contact_obj, do_unlink=True)
 
         # Create meshes for this frame
         ref_offset = mathutils.Vector((-x_sep / 2.0, 0.0, 0.0))
@@ -306,6 +382,15 @@ def main():
         )
         opt_obj = create_mesh_object(
             f"Opt_{frame_idx}", verts_opt[frame_idx], faces, mat_opt, opt_offset
+        )
+        contact_obj = create_contact_mesh_object(
+            f"Contact_{frame_idx}",
+            verts_ref[frame_idx],
+            faces,
+            contact_masks[frame_idx],
+            mat_contact,
+            ref_offset,
+            offset=args.contact_offset,
         )
 
         # Render frame

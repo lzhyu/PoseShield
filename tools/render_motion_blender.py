@@ -1,4 +1,8 @@
-"""Render a side-by-side original/optimized motion MP4 with Blender."""
+"""Render a side-by-side original/optimized motion MP4 with Blender.
+
+Optional yellow contact patches require precomputed exact-FCL masks generated
+for the same original motion, SMPL-H topology, and topology threshold.
+"""
 
 from __future__ import annotations
 
@@ -7,6 +11,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+import tempfile
 
 import numpy as np
 import smplx
@@ -39,7 +44,27 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     parser.add_argument("--fps", type=int, default=30)
     parser.add_argument("--samples", type=int, default=32)
-    parser.add_argument("--engine", choices=("CYCLES", "BLENDER_EEVEE"), default="BLENDER_EEVEE")
+    parser.add_argument(
+        "--engine",
+        choices=("CYCLES", "BLENDER_EEVEE", "BLENDER_EEVEE_NEXT", "BLENDER_WORKBENCH"),
+        default="BLENDER_EEVEE",
+    )
+    parser.add_argument("--frame-stride", type=int, default=1, help="Render every Nth frame for compact website previews")
+    parser.add_argument("--start-frame", type=int, default=0, help="Start rendering from this original frame index before striding")
+    parser.add_argument("--max-frames", type=int, default=None, help="Cap the number of rendered frames after striding")
+    parser.add_argument("--res-x", type=int, default=1920)
+    parser.add_argument("--res-y", type=int, default=1080)
+    parser.add_argument("--highlight-contact", action="store_true", help="Render yellow contact patches on the red input motion")
+    parser.add_argument(
+        "--contact-mask-path",
+        type=Path,
+        default=None,
+        help=(
+            "Precomputed full-sequence contact mask .npz from tools/export_motion_contact_masks.py. "
+            "This is the recommended prerequisite for --highlight-contact."
+        ),
+    )
+    parser.add_argument("--disable-contact-highlight", action="store_true", help=argparse.SUPPRESS)
     return parser.parse_args()
 
 
@@ -122,7 +147,100 @@ def encode_frames_with_ffmpeg(
             f"Original error: {exc}",
             file=sys.stderr,
         )
-    subprocess.run(fallback_command, check=True)
+    try:
+        subprocess.run(fallback_command, check=True)
+        return
+    except (FileNotFoundError, subprocess.CalledProcessError) as exc:
+        print(
+            "FFmpeg MPEG-4 fallback failed; retrying with imageio-ffmpeg. "
+            f"Original error: {exc}",
+            file=sys.stderr,
+        )
+    try:
+        encode_frames_with_imageio(frames_dir, output_path, fps)
+        return
+    except Exception as exc:
+        print(
+            "imageio-ffmpeg encode failed; retrying with OpenCV VideoWriter. "
+            f"Original error: {exc}",
+            file=sys.stderr,
+        )
+    encode_frames_with_opencv(frames_dir, output_path, fps)
+
+
+def encode_frames_with_imageio(frames_dir: Path, output_path: Path, fps: int) -> None:
+    """Encode PNG frames through imageio's bundled ffmpeg binary."""
+    import imageio.v2 as imageio
+
+    frame_paths = sorted(frames_dir.glob("frame_*.png"))
+    if not frame_paths:
+        raise RuntimeError(f"No frames found in {frames_dir}")
+    codec = "libvpx-vp9" if output_path.suffix.lower() == ".webm" else "libx264"
+    writer = imageio.get_writer(
+        str(output_path),
+        fps=fps,
+        codec=codec,
+        quality=8,
+        macro_block_size=1,
+    )
+    try:
+        for path in frame_paths:
+            writer.append_data(imageio.imread(path))
+    finally:
+        writer.close()
+
+
+def encode_frames_with_opencv(frames_dir: Path, output_path: Path, fps: int) -> None:
+    """Encode PNG frames to a local MP4 without requiring a system ffmpeg binary."""
+    import cv2
+
+    frame_paths = sorted(frames_dir.glob("frame_*.png"))
+    if not frame_paths:
+        raise RuntimeError(f"No frames found in {frames_dir}")
+    first = cv2.imread(str(frame_paths[0]), cv2.IMREAD_COLOR)
+    if first is None:
+        raise RuntimeError(f"Could not read first rendered frame: {frame_paths[0]}")
+    height, width = first.shape[:2]
+    fourcc_name = "VP80" if output_path.suffix.lower() == ".webm" else "mp4v"
+    fourcc = cv2.VideoWriter_fourcc(*fourcc_name)
+    writer = cv2.VideoWriter(str(output_path), fourcc, fps, (width, height))
+    if not writer.isOpened():
+        raise RuntimeError(f"OpenCV could not open video writer for {output_path}")
+    try:
+        for path in frame_paths:
+            frame = cv2.imread(str(path), cv2.IMREAD_COLOR)
+            if frame is None:
+                raise RuntimeError(f"Could not read rendered frame: {path}")
+            if frame.shape[:2] != (height, width):
+                frame = cv2.resize(frame, (width, height), interpolation=cv2.INTER_AREA)
+            writer.write(frame)
+    finally:
+        writer.release()
+
+
+def encode_frames_as_gif(frames_dir: Path, output_path: Path, fps: int) -> None:
+    """Encode rendered PNG frames as an animated GIF without FFmpeg."""
+    from PIL import Image
+
+    frame_paths = sorted(frames_dir.glob("frame_*.png"))
+    if not frame_paths:
+        raise RuntimeError(f"No frames found in {frames_dir}")
+    frames = [
+        Image.open(path)
+        .convert("RGB")
+        .quantize(colors=128, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE)
+        for path in frame_paths
+    ]
+    duration_ms = max(1, int(1000 / fps))
+    frames[0].save(
+        output_path,
+        save_all=True,
+        append_images=frames[1:],
+        duration=duration_ms,
+        loop=0,
+        optimize=False,
+        disposal=2,
+    )
 
 
 def main() -> None:
@@ -134,23 +252,68 @@ def main() -> None:
         raise ValueError(f"Motion shapes differ: {original.shape} != {optimized.shape}")
     if not np.array_equal(original[:, 132:135], optimized[:, 132:135]):
         raise AssertionError("Optimized translation does not exactly match the original")
+    if args.frame_stride < 1:
+        raise ValueError("--frame-stride must be >= 1")
+    if args.start_frame < 0:
+        raise ValueError("--start-frame must be >= 0")
+    if args.start_frame >= original.shape[0]:
+        raise ValueError(f"--start-frame {args.start_frame} is outside the motion length {original.shape[0]}")
+    highlight_contact = (args.highlight_contact or args.contact_mask_path is not None) and not args.disable_contact_highlight
+    if args.highlight_contact and args.contact_mask_path is None:
+        raise ValueError(
+            "--highlight-contact requires --contact-mask-path. "
+            "Generate masks first with tools/export_motion_contact_masks.py."
+        )
+    contact_masks_full = None
+    contact_faces_ref = None
+    if highlight_contact and args.contact_mask_path is not None:
+        mask_data = np.load(args.contact_mask_path)
+        contact_masks_full = mask_data["contact_masks"].astype(np.bool_)
+        if "faces" in mask_data.files:
+            contact_faces_ref = mask_data["faces"]
+        if contact_masks_full.shape[0] != original.shape[0]:
+            raise ValueError(
+                f"Contact mask frame count {contact_masks_full.shape[0]} does not match motion frame count {original.shape[0]}"
+            )
+    if args.start_frame:
+        original = original[args.start_frame :]
+        optimized = optimized[args.start_frame :]
+        if contact_masks_full is not None:
+            contact_masks_full = contact_masks_full[args.start_frame :]
+    original = original[:: args.frame_stride]
+    optimized = optimized[:: args.frame_stride]
+    if contact_masks_full is not None:
+        contact_masks_full = contact_masks_full[:: args.frame_stride]
+    if args.max_frames is not None:
+        original = original[: args.max_frames]
+        optimized = optimized[: args.max_frames]
+        if contact_masks_full is not None:
+            contact_masks_full = contact_masks_full[: args.max_frames]
 
     output_path = args.output.resolve()
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    work_dir = output_path.parent / f"{output_path.stem}_blender_tmp"
+    work_dir = Path(tempfile.mkdtemp(prefix=f"{output_path.stem}_blender_tmp_", dir=output_path.parent))
     frames_dir = work_dir / "frames"
     mesh_path = work_dir / "meshes.npz"
-    work_dir.mkdir(parents=True, exist_ok=True)
     frames_dir.mkdir(parents=True, exist_ok=True)
 
     device = torch.device(args.device)
     verts_original, faces = run_forward_kinematics(original, device)
     verts_optimized, _ = run_forward_kinematics(optimized, device)
+    if contact_masks_full is not None:
+        contact_masks = contact_masks_full
+        if contact_masks.shape[1] != len(faces):
+            raise ValueError(f"Contact mask face count {contact_masks.shape[1]} does not match mesh faces {len(faces)}")
+        if contact_faces_ref is not None and not np.array_equal(contact_faces_ref, faces):
+            raise ValueError("Contact mask faces do not match the SMPL-H mesh topology used for rendering")
+    else:
+        contact_masks = np.zeros((len(verts_original), len(faces)), dtype=np.bool_)
     np.savez_compressed(
         mesh_path,
         verts_a=verts_original,
         verts_b=verts_optimized,
         faces=faces,
+        contact_masks=contact_masks,
     )
 
     blender_script = Path(__file__).resolve().parent / "blender_render.py"
@@ -171,6 +334,10 @@ def main() -> None:
             str(args.samples),
             "--fps",
             str(args.fps),
+            "--res-x",
+            str(args.res_x),
+            "--res-y",
+            str(args.res_y),
             "--color-a",
             "0.85",
             "0.18",
@@ -187,8 +354,11 @@ def main() -> None:
     rendered_frames = sorted(frames_dir.glob("frame_*.png"))
     if not rendered_frames:
         raise RuntimeError(f"Blender did not render any PNG frames under {frames_dir}")
-    encode_frames_with_ffmpeg(args.ffmpeg_path, frames_dir, output_path, args.fps)
-    shutil.rmtree(work_dir)
+    if output_path.suffix.lower() == ".gif":
+        encode_frames_as_gif(frames_dir, output_path, args.fps)
+    else:
+        encode_frames_with_ffmpeg(args.ffmpeg_path, frames_dir, output_path, args.fps)
+    shutil.rmtree(work_dir, ignore_errors=True)
     print(f"Video saved to {output_path}")
 
 
