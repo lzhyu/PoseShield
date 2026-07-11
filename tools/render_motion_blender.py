@@ -155,6 +155,14 @@ def encode_frames_with_ffmpeg(
         str(output_path),
     ]
 
+    ffmpeg_executable = shutil.which(ffmpeg_path) or (ffmpeg_path if Path(ffmpeg_path).is_file() else None)
+    if ffmpeg_executable is None:
+        raise FileNotFoundError(
+            f"FFmpeg executable not found: {ffmpeg_path}. Install FFmpeg or pass --ffmpeg-path /path/to/ffmpeg."
+        )
+    x264_command[0] = ffmpeg_executable
+    fallback_command[0] = ffmpeg_executable
+
     try:
         subprocess.run(x264_command, check=True)
         return
@@ -168,71 +176,7 @@ def encode_frames_with_ffmpeg(
         subprocess.run(fallback_command, check=True)
         return
     except (FileNotFoundError, subprocess.CalledProcessError) as exc:
-        print(
-            "FFmpeg MPEG-4 fallback failed; retrying with imageio-ffmpeg. "
-            f"Original error: {exc}",
-            file=sys.stderr,
-        )
-    try:
-        encode_frames_with_imageio(frames_dir, output_path, fps)
-        return
-    except Exception as exc:
-        print(
-            "imageio-ffmpeg encode failed; retrying with OpenCV VideoWriter. "
-            f"Original error: {exc}",
-            file=sys.stderr,
-        )
-    encode_frames_with_opencv(frames_dir, output_path, fps)
-
-
-def encode_frames_with_imageio(frames_dir: Path, output_path: Path, fps: int) -> None:
-    """Encode PNG frames through imageio's bundled ffmpeg binary."""
-    import imageio.v2 as imageio
-
-    frame_paths = sorted(frames_dir.glob("frame_*.png"))
-    if not frame_paths:
-        raise RuntimeError(f"No frames found in {frames_dir}")
-    codec = "libvpx-vp9" if output_path.suffix.lower() == ".webm" else "libx264"
-    writer = imageio.get_writer(
-        str(output_path),
-        fps=fps,
-        codec=codec,
-        quality=8,
-        macro_block_size=1,
-    )
-    try:
-        for path in frame_paths:
-            writer.append_data(imageio.imread(path))
-    finally:
-        writer.close()
-
-
-def encode_frames_with_opencv(frames_dir: Path, output_path: Path, fps: int) -> None:
-    """Encode PNG frames to a local MP4 without requiring a system ffmpeg binary."""
-    import cv2
-
-    frame_paths = sorted(frames_dir.glob("frame_*.png"))
-    if not frame_paths:
-        raise RuntimeError(f"No frames found in {frames_dir}")
-    first = cv2.imread(str(frame_paths[0]), cv2.IMREAD_COLOR)
-    if first is None:
-        raise RuntimeError(f"Could not read first rendered frame: {frame_paths[0]}")
-    height, width = first.shape[:2]
-    fourcc_name = "VP80" if output_path.suffix.lower() == ".webm" else "mp4v"
-    fourcc = cv2.VideoWriter_fourcc(*fourcc_name)
-    writer = cv2.VideoWriter(str(output_path), fourcc, fps, (width, height))
-    if not writer.isOpened():
-        raise RuntimeError(f"OpenCV could not open video writer for {output_path}")
-    try:
-        for path in frame_paths:
-            frame = cv2.imread(str(path), cv2.IMREAD_COLOR)
-            if frame is None:
-                raise RuntimeError(f"Could not read rendered frame: {path}")
-            if frame.shape[:2] != (height, width):
-                frame = cv2.resize(frame, (width, height), interpolation=cv2.INTER_AREA)
-            writer.write(frame)
-    finally:
-        writer.release()
+        raise RuntimeError(f"FFmpeg MPEG-4 fallback failed: {exc}") from exc
 
 
 def encode_frames_as_gif(frames_dir: Path, output_path: Path, fps: int) -> None:
@@ -275,12 +219,47 @@ def main() -> None:
     if args.mesh_path is not None:
         if args.contact_mask_path is not None:
             raise ValueError("--contact-mask-path is only used with --original/--optimized; precomputed mesh packages include masks")
-        mesh_path = args.mesh_path.resolve()
-        mesh_data = np.load(mesh_path)
+        source_mesh_path = args.mesh_path.resolve()
+        mesh_data = np.load(source_mesh_path)
         required_keys = {"verts_a", "verts_b", "faces"}
         missing = required_keys.difference(mesh_data.files)
         if missing:
-            raise ValueError(f"Mesh package {mesh_path} is missing required arrays: {sorted(missing)}")
+            raise ValueError(f"Mesh package {source_mesh_path} is missing required arrays: {sorted(missing)}")
+        verts_original = mesh_data["verts_a"]
+        verts_optimized = mesh_data["verts_b"]
+        faces = mesh_data["faces"]
+        if verts_original.shape != verts_optimized.shape:
+            raise ValueError(f"Mesh package body shapes differ: {verts_original.shape} != {verts_optimized.shape}")
+        if args.start_frame < 0:
+            raise ValueError("--start-frame must be >= 0")
+        if args.start_frame >= verts_original.shape[0]:
+            raise ValueError(f"--start-frame {args.start_frame} is outside the mesh sequence length {verts_original.shape[0]}")
+        if "contact_masks" in mesh_data.files:
+            contact_masks = mesh_data["contact_masks"].astype(np.bool_)
+            if contact_masks.shape[0] != verts_original.shape[0] or contact_masks.shape[1] != len(faces):
+                raise ValueError(
+                    f"Mesh package contact mask shape {contact_masks.shape} does not match "
+                    f"{verts_original.shape[0]} frames and {len(faces)} faces"
+                )
+        else:
+            contact_masks = np.zeros((verts_original.shape[0], len(faces)), dtype=np.bool_)
+        verts_original = verts_original[args.start_frame :: args.frame_stride]
+        verts_optimized = verts_optimized[args.start_frame :: args.frame_stride]
+        contact_masks = contact_masks[args.start_frame :: args.frame_stride]
+        if args.max_frames is not None:
+            verts_original = verts_original[: args.max_frames]
+            verts_optimized = verts_optimized[: args.max_frames]
+            contact_masks = contact_masks[: args.max_frames]
+        if verts_original.shape[0] == 0:
+            raise ValueError("No frames remain after start/stride/max-frame filtering")
+        mesh_path = work_dir / "meshes.npz"
+        np.savez_compressed(
+            mesh_path,
+            verts_a=verts_original,
+            verts_b=verts_optimized,
+            faces=faces,
+            contact_masks=contact_masks,
+        )
     else:
         if args.original is None or args.optimized is None:
             raise ValueError("Provide either --mesh-path or both --original and --optimized")

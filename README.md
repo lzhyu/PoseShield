@@ -345,62 +345,22 @@ This is the lightweight visualization path and does not require Blender.
 
 <br>
 
-For a higher-quality MP4 render, install Blender manually and use an FFmpeg
-build with `libx264` support when possible. Some system FFmpeg modules do not
-enable `libx264`, so the script accepts `--ffmpeg-path` and falls back to MPEG-4
-encoding if the `libx264 -crf` encode fails.
+Blender rendering is optional and is not required for PoseShield evaluation.
+The renderer can export a side-by-side video with the original motion in red,
+the PoseShield output in green, and precomputed exact-contact patches in yellow:
 
-```bash
-python tools/render_motion_blender.py \
-    --original demo_asset/$SAMPLE \
-    --optimized demos/output_motion/${STEM}_stage2/optimized_motion.npy \
-    --output demos/output_motion/${STEM}_stage2/render.mp4 \
-    --blender-path /path/to/blender \
-    --ffmpeg-path /path/to/ffmpeg
-```
+<video src="demos/contact_render_demo/render_contact_preview.webm" controls muted loop width="720"></video>
 
-Blender/MP4 rendering is optional and is not required for PoseShield evaluation.
-The default render colors are red for the original motion and green for the
-optimized motion.
-
-To add yellow contact patches to the red original motion, first export
-TOPO-filtered exact-FCL contact masks and then pass the saved mask to the
-renderer. The mask must be generated from the same original motion, SMPL-H mesh
-topology, and topology threshold used for rendering; the Blender step only
-visualizes the precomputed face mask.
-
-A small ready-to-render validation pair is included under
+A small ready-to-render validation pair is included in
 [`demos/contact_render_demo/`](demos/contact_render_demo/):
 
 ```bash
 bash demos/demo_blender_contact_render.sh
 ```
 
-This renders `demos/contact_render_demo/render_contact.mp4` from the bundled
-original motion, PoseShield output motion, and TOPO=40 exact-FCL contact mask.
-The quick demo uses a bundled precomputed mesh package, so it does not require
-SMPL-H body-model files, torch, or smplx. If Blender is not on `PATH`, set
-`BLENDER_PATH=/path/to/blender`.
-
-```bash
-python tools/export_motion_contact_masks.py \
-    --motions demo_asset/$SAMPLE \
-    --output-dir demos/output_motion/${STEM}_stage2/contact_masks \
-    --topology-threshold 40 \
-    --rings 1
-
-python tools/render_motion_blender.py \
-    --original demo_asset/$SAMPLE \
-    --optimized demos/output_motion/${STEM}_stage2/optimized_motion.npy \
-    --output demos/output_motion/${STEM}_stage2/render_contact.mp4 \
-    --blender-path /path/to/blender \
-    --ffmpeg-path /path/to/ffmpeg \
-    --highlight-contact \
-    --contact-mask-path demos/output_motion/${STEM}_stage2/contact_masks/${STEM}_contact_masks.npz
-```
-
-If no `--highlight-contact` or `--contact-mask-path` is provided, the renderer
-produces the same clean red/green side-by-side video without yellow overlays.
+The demo README also includes a public-format motion-to-mesh render path using
+`demos/demo_motion_to_mesh_contact_render.sh`, plus contact-mask regeneration
+commands.
 
 </details>
 

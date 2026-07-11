@@ -5,14 +5,17 @@ set -euo pipefail
 BLENDER_PATH="${BLENDER_PATH:-blender}"
 FFMPEG_PATH="${FFMPEG_PATH:-ffmpeg}"
 DEMO_DIR="demos/contact_render_demo"
-OUTPUT_PATH="${DEMO_DIR}/render_contact.mp4"
-MESH_PATH="${MESH_PATH:-${DEMO_DIR}/render_meshes.npz}"
+ORIGINAL_MOTION="${ORIGINAL_MOTION:-${DEMO_DIR}/original_motion.npy}"
+OPTIMIZED_MOTION="${OPTIMIZED_MOTION:-${DEMO_DIR}/optimized_motion.npy}"
+CONTACT_MASK_PATH="${CONTACT_MASK_PATH:-${DEMO_DIR}/contact_masks.npz}"
+OUTPUT_PATH="${OUTPUT_PATH:-${DEMO_DIR}/render_contact_motion_to_mesh.mp4}"
 FPS="${FPS:-10}"
-SAMPLES="${SAMPLES:-8}"
-FRAME_STRIDE="${FRAME_STRIDE:-1}"
-MAX_FRAMES="${MAX_FRAMES:-}"
+SAMPLES="${SAMPLES:-4}"
+FRAME_STRIDE="${FRAME_STRIDE:-4}"
+MAX_FRAMES="${MAX_FRAMES:-12}"
 RES_X="${RES_X:-960}"
 RES_Y="${RES_Y:-540}"
+DEVICE="${DEVICE:-cpu}"
 
 if command -v "$BLENDER_PATH" >/dev/null 2>&1; then
     BLENDER_BIN="$BLENDER_PATH"
@@ -21,7 +24,7 @@ elif [ -x "$BLENDER_PATH" ]; then
 else
     echo "Error: Blender executable not found at: $BLENDER_PATH"
     echo "Set BLENDER_PATH first, for example:"
-    echo "  BLENDER_PATH=/path/to/blender bash demos/demo_blender_contact_render.sh"
+    echo "  BLENDER_PATH=/path/to/blender bash demos/demo_motion_to_mesh_contact_render.sh"
     exit 1
 fi
 
@@ -32,16 +35,20 @@ elif [ -x "$FFMPEG_PATH" ]; then
 else
     echo "Error: FFmpeg executable not found at: $FFMPEG_PATH"
     echo "Install FFmpeg or set FFMPEG_PATH first, for example:"
-    echo "  FFMPEG_PATH=/path/to/ffmpeg bash demos/demo_blender_contact_render.sh"
+    echo "  FFMPEG_PATH=/path/to/ffmpeg bash demos/demo_motion_to_mesh_contact_render.sh"
     exit 1
 fi
 
 RENDER_ARGS=(
     tools/render_motion_blender.py
-    --mesh-path "$MESH_PATH"
+    --original "$ORIGINAL_MOTION"
+    --optimized "$OPTIMIZED_MOTION"
     --output "$OUTPUT_PATH"
     --blender-path "$BLENDER_BIN"
     --ffmpeg-path "$FFMPEG_BIN"
+    --device "$DEVICE"
+    --highlight-contact
+    --contact-mask-path "$CONTACT_MASK_PATH"
     --fps "$FPS"
     --samples "$SAMPLES"
     --engine BLENDER_EEVEE
@@ -56,4 +63,4 @@ fi
 
 python "${RENDER_ARGS[@]}"
 
-echo "Rendered contact-overlay demo to: $OUTPUT_PATH"
+echo "Rendered motion-to-mesh contact demo to: $OUTPUT_PATH"
