@@ -38,7 +38,7 @@ them.
 
 - [x] Quick pose and motion demos with released checkpoints.
 - [x] Humans with Collisions (HwC) data for training, evaluation, and the 500-pose benchmark.
-- [x] Exact-FCL validation plus HTML and optional Blender visualization.
+- [x] Exact-FCL validation plus recommended Blender visualization and legacy HTML fallback.
 - [x] Experimental shape-aware SAField demo that resolves a fixed sample and exports OBJ meshes.
 
 ## Overview

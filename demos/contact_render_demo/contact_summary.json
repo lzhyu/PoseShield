@@ -1,7 +1,7 @@
 {
   "stem": "motionfix_005406_135",
-  "motion": "/depot/bera89/data/li5280/project/code-release-verify/PoseShield/data/motion_canonical/motionfix_005406_135.npy",
-  "mask_path": "/depot/bera89/data/li5280/project/code-release-verify/PoseShield/tmp/website_runs/website_assets/motion_contacts_all/motionfix_005406_135_contact_masks.npz",
+  "motion": "demos/contact_render_demo/original_motion.npy",
+  "mask_path": "demos/contact_render_demo/contact_masks.npz",
   "num_frames": 120,
   "num_collision_frames": 120,
   "collision_frame_indices": [

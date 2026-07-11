@@ -180,7 +180,7 @@ class BandedTopologyDistances:
             raise ValueError(
                 f"Topology threshold {threshold} is outside compact cache range "
                 f"[{self.min_distance}, {self.max_distance}]. Regenerate the cache "
-                "with a wider range or use the legacy deps/distances.pkl."
+                "with a wider range."
             )
         return threshold
 
@@ -281,7 +281,7 @@ def is_mesh_self_intersecting(vertices, faces, distances, topology_threshold=Non
     Parameters:
         vertices (np.ndarray): Nx3 array of vertex coordinates.
         faces (np.ndarray): Mx3 array of triangle indices.
-        distances (dict): Precomputed topological distances dictionary (using pickle).
+        distances: Precomputed topology-distance cache.
         topology_threshold (int): Minimum topological distance for a collision to be considered
                                   an error (collisions with a distance <= threshold are ignored).
 

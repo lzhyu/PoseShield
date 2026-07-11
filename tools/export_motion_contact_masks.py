@@ -60,10 +60,18 @@ def dilate_faces(faces: np.ndarray, seed_faces: list[int], rings: int) -> list[i
     return sorted(selected)
 
 
+def display_path(path: Path) -> str:
+    """Return a repo-relative path when possible, otherwise the original path."""
+    try:
+        return str(path.resolve().relative_to(PROJECT_ROOT))
+    except ValueError:
+        return str(path)
+
+
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Export original-motion contact masks for website renders")
+    parser = argparse.ArgumentParser(description="Export original-motion contact masks for Blender renders")
     parser.add_argument("--motions", type=Path, nargs="+", required=True)
-    parser.add_argument("--output-dir", type=Path, default=PROJECT_ROOT / "tmp/website_runs/website_assets/motion_contacts")
+    parser.add_argument("--output-dir", type=Path, default=PROJECT_ROOT / "outputs/contact_masks")
     parser.add_argument("--distances", type=Path, default=PROJECT_ROOT / "deps/topology_distances_30_60.npz")
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--chunk-size", type=int, default=8)
@@ -167,8 +175,8 @@ def export_one(
     np.savez_compressed(mask_path, contact_masks=masks, faces=faces_ref)
     summary = {
         "stem": motion_path.stem,
-        "motion": str(motion_path),
-        "mask_path": str(mask_path),
+        "motion": display_path(motion_path),
+        "mask_path": display_path(mask_path),
         "num_frames": int(len(motion)),
         "num_collision_frames": int(len(collision_frames)),
         "collision_frame_indices": collision_frames,
