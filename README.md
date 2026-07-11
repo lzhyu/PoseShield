@@ -378,7 +378,9 @@ bash demos/demo_blender_contact_render.sh
 
 This renders `demos/contact_render_demo/render_contact.mp4` from the bundled
 original motion, PoseShield output motion, and TOPO=40 exact-FCL contact mask.
-If Blender is not on `PATH`, set `BLENDER_PATH=/path/to/blender`.
+The quick demo uses a bundled precomputed mesh package, so it does not require
+SMPL-H body-model files, torch, or smplx. If Blender is not on `PATH`, set
+`BLENDER_PATH=/path/to/blender`.
 
 ```bash
 python tools/export_motion_contact_masks.py \

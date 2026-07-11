@@ -14,26 +14,26 @@ import sys
 import tempfile
 
 import numpy as np
-import smplx
-import torch
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from poseshield.hymotion.dno.dno_loss import (
-    BODY_MODEL_PATH_,
-    matrix_to_axis_angle_torch,
-    rotation_6d_to_matrix_torch,
-)
-from poseshield.hymotion.utils.motion_format import load_motion
-
 
 def parse_args() -> argparse.Namespace:
     """Parse Blender rendering arguments."""
     parser = argparse.ArgumentParser(description="Render a high-quality SMPL-H motion MP4")
-    parser.add_argument("--original", type=Path, required=True, help="Original canonical motion")
-    parser.add_argument("--optimized", type=Path, required=True, help="Optimized canonical motion")
+    parser.add_argument("--original", type=Path, default=None, help="Original canonical motion")
+    parser.add_argument("--optimized", type=Path, default=None, help="Optimized canonical motion")
+    parser.add_argument(
+        "--mesh-path",
+        type=Path,
+        default=None,
+        help=(
+            "Precomputed render mesh package with verts_a, verts_b, faces, and optional contact_masks. "
+            "When provided, SMPL-H/body-model dependencies are not needed."
+        ),
+    )
     parser.add_argument("--output", type=Path, required=True, help="Output MP4 path")
     parser.add_argument("--blender-path", type=Path, required=True, help="Path to the Blender binary")
     parser.add_argument(
@@ -41,7 +41,7 @@ def parse_args() -> argparse.Namespace:
         default="ffmpeg",
         help="Path to an FFmpeg binary. The preferred encoder is libx264; the script falls back to mpeg4 if unavailable.",
     )
-    parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
+    parser.add_argument("--device", default="auto")
     parser.add_argument("--fps", type=int, default=30)
     parser.add_argument("--samples", type=int, default=32)
     parser.add_argument(
@@ -68,8 +68,17 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def run_forward_kinematics(motion: np.ndarray, device: torch.device) -> tuple[np.ndarray, np.ndarray]:
+def run_forward_kinematics(motion: np.ndarray, device) -> tuple[np.ndarray, np.ndarray]:
     """Compute SMPL-H vertices and faces for a public canonical motion."""
+    import smplx
+    import torch
+
+    from poseshield.hymotion.dno.dno_loss import (
+        BODY_MODEL_PATH_,
+        matrix_to_axis_angle_torch,
+        rotation_6d_to_matrix_torch,
+    )
+
     rotations = torch.from_numpy(motion[:, :132]).float().to(device)
     root_rotation = rotations[:, :6]
     body_rotation = rotations[:, 6:].reshape(-1, 21, 6)
@@ -97,6 +106,14 @@ def run_forward_kinematics(motion: np.ndarray, device: torch.device) -> tuple[np
             return_verts=True,
         )
     return output.vertices.cpu().numpy(), smpl_model.faces
+
+
+def resolve_torch_device(device_name: str):
+    import torch
+
+    if device_name == "auto":
+        return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    return torch.device(device_name)
 
 
 def encode_frames_with_ffmpeg(
@@ -246,75 +263,90 @@ def encode_frames_as_gif(frames_dir: Path, output_path: Path, fps: int) -> None:
 def main() -> None:
     """Create a side-by-side MP4 with Blender and ffmpeg."""
     args = parse_args()
-    original = load_motion(args.original)
-    optimized = load_motion(args.optimized)
-    if original.shape != optimized.shape:
-        raise ValueError(f"Motion shapes differ: {original.shape} != {optimized.shape}")
-    if not np.array_equal(original[:, 132:135], optimized[:, 132:135]):
-        raise AssertionError("Optimized translation does not exactly match the original")
     if args.frame_stride < 1:
         raise ValueError("--frame-stride must be >= 1")
-    if args.start_frame < 0:
-        raise ValueError("--start-frame must be >= 0")
-    if args.start_frame >= original.shape[0]:
-        raise ValueError(f"--start-frame {args.start_frame} is outside the motion length {original.shape[0]}")
-    highlight_contact = (args.highlight_contact or args.contact_mask_path is not None) and not args.disable_contact_highlight
-    if args.highlight_contact and args.contact_mask_path is None:
-        raise ValueError(
-            "--highlight-contact requires --contact-mask-path. "
-            "Generate masks first with tools/export_motion_contact_masks.py."
-        )
-    contact_masks_full = None
-    contact_faces_ref = None
-    if highlight_contact and args.contact_mask_path is not None:
-        mask_data = np.load(args.contact_mask_path)
-        contact_masks_full = mask_data["contact_masks"].astype(np.bool_)
-        if "faces" in mask_data.files:
-            contact_faces_ref = mask_data["faces"]
-        if contact_masks_full.shape[0] != original.shape[0]:
-            raise ValueError(
-                f"Contact mask frame count {contact_masks_full.shape[0]} does not match motion frame count {original.shape[0]}"
-            )
-    if args.start_frame:
-        original = original[args.start_frame :]
-        optimized = optimized[args.start_frame :]
-        if contact_masks_full is not None:
-            contact_masks_full = contact_masks_full[args.start_frame :]
-    original = original[:: args.frame_stride]
-    optimized = optimized[:: args.frame_stride]
-    if contact_masks_full is not None:
-        contact_masks_full = contact_masks_full[:: args.frame_stride]
-    if args.max_frames is not None:
-        original = original[: args.max_frames]
-        optimized = optimized[: args.max_frames]
-        if contact_masks_full is not None:
-            contact_masks_full = contact_masks_full[: args.max_frames]
 
     output_path = args.output.resolve()
     output_path.parent.mkdir(parents=True, exist_ok=True)
     work_dir = Path(tempfile.mkdtemp(prefix=f"{output_path.stem}_blender_tmp_", dir=output_path.parent))
     frames_dir = work_dir / "frames"
-    mesh_path = work_dir / "meshes.npz"
     frames_dir.mkdir(parents=True, exist_ok=True)
 
-    device = torch.device(args.device)
-    verts_original, faces = run_forward_kinematics(original, device)
-    verts_optimized, _ = run_forward_kinematics(optimized, device)
-    if contact_masks_full is not None:
-        contact_masks = contact_masks_full
-        if contact_masks.shape[1] != len(faces):
-            raise ValueError(f"Contact mask face count {contact_masks.shape[1]} does not match mesh faces {len(faces)}")
-        if contact_faces_ref is not None and not np.array_equal(contact_faces_ref, faces):
-            raise ValueError("Contact mask faces do not match the SMPL-H mesh topology used for rendering")
+    if args.mesh_path is not None:
+        if args.contact_mask_path is not None:
+            raise ValueError("--contact-mask-path is only used with --original/--optimized; precomputed mesh packages include masks")
+        mesh_path = args.mesh_path.resolve()
+        mesh_data = np.load(mesh_path)
+        required_keys = {"verts_a", "verts_b", "faces"}
+        missing = required_keys.difference(mesh_data.files)
+        if missing:
+            raise ValueError(f"Mesh package {mesh_path} is missing required arrays: {sorted(missing)}")
     else:
-        contact_masks = np.zeros((len(verts_original), len(faces)), dtype=np.bool_)
-    np.savez_compressed(
-        mesh_path,
-        verts_a=verts_original,
-        verts_b=verts_optimized,
-        faces=faces,
-        contact_masks=contact_masks,
-    )
+        if args.original is None or args.optimized is None:
+            raise ValueError("Provide either --mesh-path or both --original and --optimized")
+        from poseshield.hymotion.utils.motion_format import load_motion
+
+        original = load_motion(args.original)
+        optimized = load_motion(args.optimized)
+        if original.shape != optimized.shape:
+            raise ValueError(f"Motion shapes differ: {original.shape} != {optimized.shape}")
+        if not np.array_equal(original[:, 132:135], optimized[:, 132:135]):
+            raise AssertionError("Optimized translation does not exactly match the original")
+        if args.start_frame < 0:
+            raise ValueError("--start-frame must be >= 0")
+        if args.start_frame >= original.shape[0]:
+            raise ValueError(f"--start-frame {args.start_frame} is outside the motion length {original.shape[0]}")
+        highlight_contact = (args.highlight_contact or args.contact_mask_path is not None) and not args.disable_contact_highlight
+        if args.highlight_contact and args.contact_mask_path is None:
+            raise ValueError(
+                "--highlight-contact requires --contact-mask-path. "
+                "Generate masks first with tools/export_motion_contact_masks.py."
+            )
+        contact_masks_full = None
+        contact_faces_ref = None
+        if highlight_contact and args.contact_mask_path is not None:
+            mask_data = np.load(args.contact_mask_path)
+            contact_masks_full = mask_data["contact_masks"].astype(np.bool_)
+            if "faces" in mask_data.files:
+                contact_faces_ref = mask_data["faces"]
+            if contact_masks_full.shape[0] != original.shape[0]:
+                raise ValueError(
+                    f"Contact mask frame count {contact_masks_full.shape[0]} does not match motion frame count {original.shape[0]}"
+                )
+        if args.start_frame:
+            original = original[args.start_frame :]
+            optimized = optimized[args.start_frame :]
+            if contact_masks_full is not None:
+                contact_masks_full = contact_masks_full[args.start_frame :]
+        original = original[:: args.frame_stride]
+        optimized = optimized[:: args.frame_stride]
+        if contact_masks_full is not None:
+            contact_masks_full = contact_masks_full[:: args.frame_stride]
+        if args.max_frames is not None:
+            original = original[: args.max_frames]
+            optimized = optimized[: args.max_frames]
+            if contact_masks_full is not None:
+                contact_masks_full = contact_masks_full[: args.max_frames]
+
+        device = resolve_torch_device(args.device)
+        verts_original, faces = run_forward_kinematics(original, device)
+        verts_optimized, _ = run_forward_kinematics(optimized, device)
+        if contact_masks_full is not None:
+            contact_masks = contact_masks_full
+            if contact_masks.shape[1] != len(faces):
+                raise ValueError(f"Contact mask face count {contact_masks.shape[1]} does not match mesh faces {len(faces)}")
+            if contact_faces_ref is not None and not np.array_equal(contact_faces_ref, faces):
+                raise ValueError("Contact mask faces do not match the SMPL-H mesh topology used for rendering")
+        else:
+            contact_masks = np.zeros((len(verts_original), len(faces)), dtype=np.bool_)
+        mesh_path = work_dir / "meshes.npz"
+        np.savez_compressed(
+            mesh_path,
+            verts_a=verts_original,
+            verts_b=verts_optimized,
+            faces=faces,
+            contact_masks=contact_masks,
+        )
 
     blender_script = Path(__file__).resolve().parent / "blender_render.py"
     subprocess.run(
