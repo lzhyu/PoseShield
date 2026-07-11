@@ -5,6 +5,10 @@ Given a fixed colliding SMPL-H pose and two SMPL body-shape coefficient vectors,
 the demo loads the released checkpoint, resolves the pose for each shape, and
 optionally exports the input and resolved meshes as OBJ files.
 
+<p align="center">
+  <img src="../../assets/safield_experimental_shape_demo_blender.png" alt="Experimental SAField shape-aware collision resolution" width="90%">
+</p>
+
 ## Prerequisites
 
 Follow the main `README.md` first: create the PoseShield environment, install
