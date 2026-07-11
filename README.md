@@ -323,31 +323,14 @@ mesh self-collisions.
 </details>
 
 <details>
-<summary><b>HTML Visualization</b></summary>
+<summary><b>Blender MP4 Rendering</b></summary>
 
 <br>
 
-```bash
-python tools/generate_motion_html.py \
-    --sequence $STEM \
-    --original demo_asset/$SAMPLE \
-    --optimized demos/output_motion/${STEM}_stage2/optimized_motion.npy \
-    --output-dir demos/output_motion/${STEM}_stage2/visualization
-```
-
-Open the generated `*_vis.html` file in a browser.
-This is the lightweight visualization path and does not require Blender.
-
-</details>
-
-<details>
-<summary><b>Optional Blender MP4 Rendering</b></summary>
-
-<br>
-
-Blender rendering is optional and is not required for PoseShield evaluation.
-The renderer can export a side-by-side video with the original motion in red,
-the PoseShield output in green, and precomputed exact-contact patches in yellow:
+Use Blender rendering for the clearest visual inspection of PoseShield motion
+outputs. The renderer exports a side-by-side video with the original motion in
+red, the PoseShield output in green, and precomputed exact-contact patches in
+yellow:
 
 ![Blender contact render preview](demos/contact_render_demo/render_contact_preview.gif)
 
@@ -360,6 +343,25 @@ bash demos/demo_blender_contact_render.sh
 
 The demo README also includes a public-format motion-to-mesh render path using
 `demos/demo_motion_to_mesh_contact_render.sh`.
+
+</details>
+
+<details>
+<summary><b>HTML Visualization (Legacy)</b></summary>
+
+<br>
+
+```bash
+python tools/generate_motion_html.py \
+    --sequence $STEM \
+    --original demo_asset/$SAMPLE \
+    --optimized demos/output_motion/${STEM}_stage2/optimized_motion.npy \
+    --output-dir demos/output_motion/${STEM}_stage2/visualization
+```
+
+Open the generated `*_vis.html` file in a browser.
+This legacy path is a lightweight fallback when Blender rendering is not
+available.
 
 </details>
 
