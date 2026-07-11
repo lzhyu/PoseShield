@@ -359,8 +359,7 @@ bash demos/demo_blender_contact_render.sh
 ```
 
 The demo README also includes a public-format motion-to-mesh render path using
-`demos/demo_motion_to_mesh_contact_render.sh`, plus contact-mask regeneration
-commands.
+`demos/demo_motion_to_mesh_contact_render.sh`.
 
 </details>
 

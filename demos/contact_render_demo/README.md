@@ -76,41 +76,7 @@ This path runs SMPL-H forward kinematics on `original_motion.npy` and
 SMPL-H body-model assets. By default it renders a short 12-frame validation clip;
 set `MAX_FRAMES=` to render the full sequence.
 
-## Regenerate The Contact Mask
-
-To verify the mask-export step as well, regenerate the exact-FCL masks first.
-This path requires the full PoseShield Python environment, the SMPL-H body-model
-assets, and the repository's compact topology cache at
-`deps/topology_distances_30_60.npz`.
-
-```bash
-python tools/export_motion_contact_masks.py \
-    --motions demos/contact_render_demo/original_motion.npy \
-    --output-dir /tmp/poseshield_contact_demo_masks \
-    --topology-threshold 40 \
-    --rings 1 \
-    --device cpu
-```
-
-Then render with the regenerated mask:
-
-```bash
-python tools/render_motion_blender.py \
-    --original demos/contact_render_demo/original_motion.npy \
-    --optimized demos/contact_render_demo/optimized_motion.npy \
-    --output demos/contact_render_demo/render_contact_regenerated.mp4 \
-    --blender-path /path/to/blender \
-    --ffmpeg-path /path/to/ffmpeg \
-    --highlight-contact \
-    --contact-mask-path /tmp/poseshield_contact_demo_masks/original_motion_contact_masks.npz \
-    --frame-stride 4 \
-    --max-frames 6 \
-    --fps 10 \
-    --samples 4 \
-    --res-x 960 \
-    --res-y 540
-```
-
-The yellow overlay is only applied to the red original motion. The green
-PoseShield output is rendered without contact patches so the before/after
-comparison stays readable.
+For custom motions, generate a matching contact mask first with
+`tools/export_motion_contact_masks.py`. The yellow overlay is only applied to
+the red original motion. The green PoseShield output is rendered without contact
+patches so the before/after comparison stays readable.
