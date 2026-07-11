@@ -370,14 +370,15 @@ topology, and topology threshold used for rendering; the Blender step only
 visualizes the precomputed face mask.
 
 A small ready-to-render validation pair is included under
-`demos/contact_render_demo/`:
+[`demos/contact_render_demo/`](demos/contact_render_demo/):
 
 ```bash
-BLENDER_PATH=/path/to/blender bash demos/demo_blender_contact_render.sh
+bash demos/demo_blender_contact_render.sh
 ```
 
 This renders `demos/contact_render_demo/render_contact.mp4` from the bundled
 original motion, PoseShield output motion, and TOPO=40 exact-FCL contact mask.
+If Blender is not on `PATH`, set `BLENDER_PATH=/path/to/blender`.
 
 ```bash
 python tools/export_motion_contact_masks.py \

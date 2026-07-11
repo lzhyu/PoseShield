@@ -18,10 +18,11 @@ time; Blender only visualizes this precomputed mask.
 Run from the repository root:
 
 ```bash
-BLENDER_PATH=/path/to/blender bash demos/demo_blender_contact_render.sh
+bash demos/demo_blender_contact_render.sh
 ```
 
-The script writes `render_contact.mp4` in this folder.
+The script writes `render_contact.mp4` in this folder. If Blender is not on
+`PATH`, set `BLENDER_PATH=/path/to/blender`.
 
 ## Regenerate The Contact Mask
 
