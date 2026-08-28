@@ -38,6 +38,7 @@ them.
 
 - [x] Quick pose and motion demos with released checkpoints.
 - [x] Humans with Collisions (HwC) data for training, evaluation, and the 500-pose benchmark.
+- [x] Motion-level evaluation (Jitter, MFD, FSR, RPD) for collision-resolved motions.
 - [x] Exact-FCL validation plus recommended Blender visualization and legacy HTML fallback.
 - [x] Experimental shape-aware SAField demo that resolves a fixed sample and exports OBJ meshes.
 
@@ -397,6 +398,95 @@ python poseshield/pose/evaluate.py \
     --config-path ckpts/poseshield/config.yaml \
     --model-path ckpts/poseshield/model.pth
 ```
+
+### Motion-Level Collision Resolution Benchmark
+
+Scores collision-resolved motions on four metrics:
+
+- **Jitter** — mean joint jerk, in units of 10^2 m/s^3. Catches resolutions that
+  remove interpenetration with high-frequency, per-frame corrections.
+  Follows PIP (Yi et al., CVPR 2022).
+- **MFD** — distance between the resolved and input motions in a learned motion
+  feature space. Catches resolutions that succeed by changing the motion.
+  *Optional*: needs a third-party encoder download, see below.
+- **FSR** — percentage of frame transitions where a grounded foot slides.
+  Follows GMD (Karunratanakul et al., ICCV 2023).
+- **RPD** — frame-averaged exact self-penetration depth, measured with the same
+  python-fcl check as `tools/evaluate_exact_fcl.py`.
+
+Requires the release assets and SMPL+H body models from
+[Getting Started](#getting-started); run `python tools/check_assets.py` to verify.
+
+**Step 1 — resolve the motions.** Run the two stages over the benchmark motions:
+
+```bash
+mkdir -p outputs/motion_eval
+for MOTION in data/motion_canonical/*.npy; do
+    STEM=$(basename "${MOTION}" .npy)
+    OUT=outputs/motion_eval/${STEM}
+    python -m poseshield.hymotion.dno.run_dno_stage1 \
+        --model_path ckpts/tencent/HY-Motion-1.0-Lite \
+        --motion_file "${MOTION}" \
+        --output_dir "${OUT}/stage1"
+    python -m poseshield.hymotion.dno.run_dno_stage2 \
+        --model_path ckpts/tencent/HY-Motion-1.0-Lite \
+        --motion_file "${MOTION}" \
+        --stage1_z "${OUT}/stage1/stage1_z.pt" \
+        --output_dir "${OUT}/stage2"
+done
+```
+
+**Step 2 — score them.**
+
+```bash
+python -m poseshield.hymotion.evaluation.run_motion_eval \
+    --motion_dir data/motion_canonical \
+    --results_dir outputs/motion_eval \
+    --output_dir outputs/motion_eval
+```
+
+Per-motion metrics and their averages are written to
+`outputs/motion_eval/motion_eval_results.json`. Add `--no_mfd` to report Jitter,
+FSR, and RPD without setting up the optional encoder, or `--limit 5` for a quick
+check before running the full benchmark.
+
+The evaluator scores the final Stage 2 optimization step, which Stage 2 saves by
+default; see `run_motion_eval.py` for why.
+
+<details>
+<summary><b>Optional: Motion Feature Encoder for MFD</b></summary>
+
+<br>
+
+MFD needs a pretrained motion encoder and its feature normalization statistics.
+These are **third-party files that are not distributed with PoseShield** — get
+them yourself from the [MARDM](https://github.com/neu-vi/MARDM) project. They
+come from two different places:
+
+1. **Encoder weights** — the HumanML3D evaluator archive that MARDM's README
+   links (`evaluators_humanml3d`). Only the MotionCLIP evaluator is used; inside
+   the archive it is at `t2m/text_mot_match_clip/model/finest.tar`.
+2. **Normalization statistics** — checked into the MARDM repository itself at
+   `utils/eval_mean_std/t2m/{eval_mean.npy,eval_std.npy}`. These are *not* in
+   the archive above.
+
+Arrange both so the layout is:
+
+```text
+deps/motion_feature_encoder/
+├── eval_mean.npy                            # from the MARDM repo
+├── eval_std.npy                             # from the MARDM repo
+└── text_mot_match_clip/model/finest.tar     # from the evaluator archive
+```
+
+Then `python tools/check_assets.py` will list the encoder as present.
+
+The evaluator loads only the motion branch of that checkpoint, so **no CLIP
+package and no CLIP weight download are required**. If any of the three files is
+missing, the evaluator exits immediately and names the expected path; use
+`--no_mfd` to skip MFD entirely.
+
+</details>
 
 ## Training
 

@@ -146,6 +146,16 @@ OPTIONAL_ASSETS = (
         "optional shape-aware demo",
         required=False,
     ),
+    AssetSpec(
+        "Motion feature encoder",
+        (
+            Path("deps/motion_feature_encoder/text_mot_match_clip/model/finest.tar"),
+            Path("deps/motion_feature_encoder/eval_mean.npy"),
+            Path("deps/motion_feature_encoder/eval_std.npy"),
+        ),
+        "optional MFD metric in motion evaluation",
+        required=False,
+    ),
 )
 
 
