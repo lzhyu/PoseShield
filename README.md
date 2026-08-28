@@ -39,7 +39,7 @@ them.
 - [x] Quick pose and motion demos with released checkpoints.
 - [x] Humans with Collisions (HwC) data for training, evaluation, and the 500-pose benchmark.
 - [x] Motion-level evaluation (Jitter, MFD, FSR, RPD) for collision-resolved motions.
-- [x] Exact-FCL validation plus recommended Blender visualization and legacy HTML fallback.
+- [x] Exact-FCL validation plus Blender visualization.
 - [x] Experimental shape-aware SAField demo that resolves a fixed sample and exports OBJ meshes.
 
 ## Overview
@@ -344,25 +344,6 @@ bash demos/demo_blender_contact_render.sh
 
 The demo README also includes a public-format motion-to-mesh render path using
 `demos/demo_motion_to_mesh_contact_render.sh`.
-
-</details>
-
-<details>
-<summary><b>HTML Visualization (Legacy)</b></summary>
-
-<br>
-
-```bash
-python tools/generate_motion_html.py \
-    --sequence $STEM \
-    --original demo_asset/$SAMPLE \
-    --optimized demos/output_motion/${STEM}_stage2/optimized_motion.npy \
-    --output-dir demos/output_motion/${STEM}_stage2/visualization
-```
-
-Open the generated `*_vis.html` file in a browser.
-This legacy path is a lightweight fallback when Blender rendering is not
-available.
 
 </details>
 

@@ -52,17 +52,10 @@ python -m poseshield.hymotion.dno.run_dno_stage2 \
     --stage1_z "$STAGE1_DIR/stage1_z.pt" \
     --output_dir "$STAGE2_DIR"
 
-python tools/generate_motion_html.py \
-    --sequence "$STEM" \
-    --original "$MOTION_FILE" \
-    --optimized "$STAGE2_DIR/optimized_motion.npy" \
-    --output-dir "$STAGE2_DIR/visualization"
-
 echo "------------------------------------------------------------"
 echo "Done. Key outputs:"
 echo "  $STAGE1_DIR/stage1_z.pt"
 echo "  $STAGE2_DIR/optimized_motion.npy"
 echo "  $STAGE2_DIR/optimized_z.pt"
 echo "  $STAGE2_DIR/summary.json"
-echo "  $STAGE2_DIR/visualization/${STEM}_original_vs_optimized_vis.html"
 echo "------------------------------------------------------------"
