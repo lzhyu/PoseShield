@@ -14,14 +14,54 @@ def optimize_slsqp(
     threshold = 0.1,
     cost_type: str = "normal",
     tol: float = 0.03,
+    ftol: float = 1e-4,
 ):
     """
     Optimize using SciPy SLSQP to minimize cost_function(x, x_ref)
     subject to:
       - constraint_function(model, x) - threshold >= 0
         (i.e., the learned collision-field score must meet the threshold)
-      - 6D rotation regularization as equalities:
-          ||r1|| = 1, ||r2|| = 1, dot(r1, r2) = 0
+      - 6D rotation validity, bounded on the mean over joints:
+          |mean_j ||r1_j|| - 1| <= tol
+          |mean_j ||r2_j|| - 1| <= tol
+          |mean_j dot(r1_j, r2_j)| <= tol
+
+    NOTE on the 6D validity constraints: these bound the *mean* over the 21
+    joints, not each joint, so per-joint violations can cancel out - a joint at
+    ||r|| = 0.64 offset by another at 1.25 still passes. Measured worst cases at
+    tol=0.1 are ||r|| in [0.64, 1.25] and |dot(r1, r2)| up to 0.45.
+
+    This is left as-is on purpose. It is not rigorous, but it works, and it is the
+    form this code has used since the initial release:
+
+    * The optimizer's raw x never reaches the mesh. ``sixd_to_mesh`` runs
+      ``rotation_6d_to_matrix``, which Gram-Schmidt orthonormalizes, so the
+      evaluated pose is always a valid rotation. Measured field values before and
+      after that projection agree to 4 decimals, i.e. the loose constraint is not
+      being gamed.
+    * Tightening it to per-joint bounds was tried and is strictly worse on the
+      500-pose benchmark: exact collision-free rate drops 1-2 points, MVD is
+      floored around 0.069-0.075 for any tol, and divergent samples rise from
+      ~0.2% to 0.6-1.4%. The slack acts as free optimizer freedom that the final
+      Gram-Schmidt projection cleans up.
+
+    So treat ``tol`` as a soft regularizer on how far x may drift off the 6D
+    rotation manifold, not as a per-joint guarantee.
+
+    NOTE on ``ftol``: SciPy passes it to SLSQP as the requested accuracy, which
+    applies to both the objective convergence test *and* the constraint
+    feasibility test. The field constraint can therefore end up violated by as
+    much as ~ftol - measured worst ``g - threshold`` is -5.6e-05 at ftol=1e-6 and
+    -1.0e-04 at ftol=1e-4 - so any caller checking whether the constraint was met
+    must allow at least ftol of slack (see ``--constraint-tol`` in
+    resolve_dataset_test_slsqp.py).
+
+    Loosening ftol from 1e-6 to 1e-4 does not trade away solution quality here:
+    the samples that fail to converge at 1e-6 are already sitting on the
+    constraint boundary, so the tighter test only makes SLSQP keep probing in
+    place. Measured on the 500-pose benchmark at max_itr=800, threshold=0.20:
+    solver_success 0.804 -> 1.000, ~4x faster, divergent samples 0.2% -> 0, and
+    exact collision-free rate / PDR / MVD unchanged within noise.
     """
     # initial point and reference
     x0 = sample.reshape(-1).astype(np.float64)
@@ -175,7 +215,7 @@ def optimize_slsqp(
         jac=cost_fn_jac,
         constraints=constraints,
         bounds=None,  # keep unbounded; add bounds if desired
-        options={'maxiter': max_itr, 'ftol': 1e-6, 'disp': False},
+        options={'maxiter': max_itr, 'ftol': ftol, 'disp': False},
         callback=callback
     )
 

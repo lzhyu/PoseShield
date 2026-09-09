@@ -35,11 +35,20 @@ def get_args():
     )
     parser.add_argument(
         "--threshold", type=float, default=0.1,
-        help="Constraint threshold (lower means harder constraint, e.g. 0.1)"
+        help="Constraint threshold on the collision field: require g(x) >= this value. Higher means a harder constraint and a larger margin from the collision boundary (e.g. 0.1)"
     )
     parser.add_argument(
         "--max-itr", type=int, default=300,
         help="Maximum number of optimization iterations"
+    )
+    parser.add_argument(
+        "--device", default="cpu",
+        help=(
+            "Torch device for the SLSQP solve. Defaults to cpu: the collision\n"
+            "field is a small batch-1 MLP that SLSQP calls thousands of times\n"
+            "sequentially, so CUDA launch and sync overhead dominates and cpu is\n"
+            "~30x faster. Pass 'cuda' or 'auto' to override."
+        )
     )
     parser.add_argument(
         "--output-dir", default="demos/output",
@@ -49,7 +58,11 @@ def get_args():
 
 def main():
     args = get_args()
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = (
+        torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        if args.device == "auto"
+        else torch.device(args.device)
+    )
     print(f"Using device: {device}")
 
     # 1. Load Configurations

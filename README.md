@@ -357,8 +357,9 @@ python poseshield/pose/resolve_dataset_test_slsqp.py \
     --model-path ckpts/poseshield/model.pth \
     --n-samples 500 \
     --cost-type weighted \
-    --threshold 0.1 \
-    --max-itr 300 \
+    --threshold 0.20 \
+    --tol 0.1 \
+    --max-itr 800 \
     --save
 ```
 
@@ -370,7 +371,7 @@ Pose-level SLSQP logs report three separate statuses:
 - `exact_collision_free`: whether the final SMPL-H mesh is collision-free under
   exact-FCL validation.
 
-The default SLSQP iteration budget is `--max-itr 300`.
+The default SLSQP iteration budget is `--max-itr 800`.
 
 ### Collision Detection Accuracy
 
